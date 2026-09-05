@@ -56,3 +56,4 @@
 | [luongnv89/claude-howto](luongnv89--claude-howto/) | 41356 | 31 | `MIT` | `main` | [`1e16914a8de8`](https://github.com/luongnv89/claude-howto/commit/1e16914a8de857d097e66d7ef15683e52955e596) |
 | [nexu-io/open-design](nexu-io--open-design/) | 94126 | 536 | `Apache-2.0` | `main` | [`50e305dff2b6`](https://github.com/nexu-io/open-design/commit/50e305dff2b64d9dc0220e5dfa5d8c98ba4364e3) |
 | [openai/codex-plugin-cc](openai--codex-plugin-cc/) | 32781 | 3 | `Apache-2.0` | `main` | [`db52e28f4d9d`](https://github.com/openai/codex-plugin-cc/commit/db52e28f4d9ded852ab3942cea316258ae4ef346) |
+| [shanraisshan/claude-code-best-practice](shanraisshan--claude-code-best-practice/) | 65618 | 9 | `MIT` | `main` | [`d75728922423`](https://github.com/shanraisshan/claude-code-best-practice/commit/d75728922423d3231103e9eee90b75480385ef4c) |
