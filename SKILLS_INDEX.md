@@ -47,3 +47,4 @@
 | [EveryInc/compound-engineering-plugin](EveryInc--compound-engineering-plugin/) | 24847 | 40 | `MIT` | `main` | [`57e409e5c8c2`](https://github.com/EveryInc/compound-engineering-plugin/commit/57e409e5c8c2c472106bd7d87ac72b724b70826b) |
 | [Fission-AI/OpenSpec](Fission-AI--OpenSpec/) | 67330 | 16 | `MIT` | `main` | [`e062b9572be9`](https://github.com/Fission-AI/OpenSpec/commit/e062b9572be933564ba3899d059377dfa1393e32) |
 | [SuperClaude-Org/SuperClaude_Framework](SuperClaude-Org--SuperClaude_Framework/) | 23870 | 9 | `MIT` | `master` | [`1b81e51db955`](https://github.com/SuperClaude-Org/SuperClaude_Framework/commit/1b81e51db955126ec8983769b96dec575d730c05) |
+| [Yeachan-Heo/oh-my-claudecode](Yeachan-Heo--oh-my-claudecode/) | 39015 | 35 | `MIT` | `main` | [`aaf388290609`](https://github.com/Yeachan-Heo/oh-my-claudecode/commit/aaf38829060979006d37018c1648fe17b7b9918e) |
