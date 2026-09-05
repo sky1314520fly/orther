@@ -43,3 +43,4 @@
 | [virgiliojr94/book-to-skill](virgiliojr94--book-to-skill/) | 28548 | 1 | `MIT` | `master` | [`a6cad12dee07`](https://github.com/virgiliojr94/book-to-skill/commit/a6cad12dee07a7700068e2aa51cba871ef3b5349) |
 | [zarazhangrui/frontend-slides](zarazhangrui--frontend-slides/) | 28743 | 2 | `MIT` | `main` | [`9906a34d640d`](https://github.com/zarazhangrui/frontend-slides/commit/9906a34d640d2111f724544cbc50f7f130569ae1) |
 | [zhaoxuya520/reverse-skill](zhaoxuya520--reverse-skill/) | 34580 | 89 | `MIT` | `main` | [`7e2097fd90d2`](https://github.com/zhaoxuya520/reverse-skill/commit/7e2097fd90d25c2f976f6eba26d6c00aa88051df) |
+| [github/spec-kit](github--spec-kit/) | 133521 | 1 | `MIT` | `main` | [`4a7341a93d94`](https://github.com/github/spec-kit/commit/4a7341a93d944d6efe153b71da4a1adb9c2b578c) |
