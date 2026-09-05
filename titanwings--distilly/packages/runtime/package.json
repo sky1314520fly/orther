@@ -1,0 +1,35 @@
+{
+  "name": "@distilly/runtime",
+  "version": "0.0.0",
+  "description": "Local runtime composition for the Distilly Developer Preview.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./preview": {
+      "types": "./lib/preview.d.ts",
+      "default": "./lib/preview.js"
+    }
+  },
+  "files": [
+    "lib",
+    "!lib/**/*.test.*"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@distilly/adapters": "workspace:*",
+    "@distilly/bindings": "workspace:*",
+    "@distilly/engine": "workspace:*",
+    "@distilly/protocol": "workspace:*"
+  },
+  "scripts": {
+    "smoke:built": "node scripts/smoke-built.mjs"
+  }
+}

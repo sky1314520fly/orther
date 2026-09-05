@@ -1,0 +1,28 @@
+{
+  "name": "@distilly/protocol",
+  "version": "0.0.0",
+  "description": "Universal wire vocabulary and runtime boundary schemas for distilly.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib",
+    "!lib/**/*.test.*"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "scripts": {
+    "snapshots": "node scripts/check-public-api.mjs && vitest --root ../.. run packages/protocol/src/public-api.snapshot.test.ts",
+    "smoke:built": "node scripts/smoke-built.mjs"
+  }
+}

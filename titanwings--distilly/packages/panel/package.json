@@ -1,0 +1,45 @@
+{
+  "name": "@distilly/panel",
+  "version": "0.1.0-preview.1",
+  "description": "Loopback-only Distilly review panel over an injected EngineClient.",
+  "license": "MIT",
+  "type": "module",
+  "imports": {
+    "#package-manifest": "./package.json"
+  },
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "exports": {
+    "./server": {
+      "types": "./lib/server/server.d.ts",
+      "default": "./lib/server/server.js"
+    },
+    "./web": {
+      "types": "./lib/web/web.d.ts",
+      "default": "./lib/web/web.js"
+    }
+  },
+  "files": [
+    "lib",
+    "web",
+    "!lib/**/*.test.*",
+    "!lib/testing/**"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@distilly/mcp": "workspace:*",
+    "@distilly/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.4",
+    "playwright": "1.62.1"
+  },
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "smoke:built": "node scripts/smoke-built.mjs",
+    "snapshots": "node scripts/check-public-api.mjs && node scripts/check-browser-bundle.mjs && node scripts/build-web.mjs --check",
+    "test:browser": "tsc -b tsconfig.server.json tsconfig.web.json --force && node scripts/build-web.mjs && node e2e/panel.playwright.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.web.json && tsc -p tsconfig.test.json"
+  }
+}

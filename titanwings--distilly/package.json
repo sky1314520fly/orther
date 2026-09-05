@@ -1,0 +1,48 @@
+{
+  "name": "distilly-repo",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "gates:fast": "pnpm run format:check && pnpm run lint",
+    "typecheck": "pnpm -r exec tsc --noEmit -p tsconfig.json && pnpm -r --if-present run typecheck && tsc --noEmit -p tsconfig.tools.json",
+    "test": "vitest run && pnpm run test:panel-browser && pnpm run test:boundaries && pnpm run test:build-artifacts && pnpm run test:plugins",
+    "test:coverage": "vitest run --coverage",
+    "test:panel-http": "vitest run packages/panel/src/server-http.test.ts packages/panel/src/web-client.test.ts packages/panel/src/server-launcher.test.ts packages/panel/src/web-boundaries.test.ts",
+    "test:panel-browser": "pnpm --filter @distilly/panel run test:browser",
+    "test:boundaries": "node --test tests/check_package_boundaries.test.mjs",
+    "test:build-artifacts": "node --test tests/build_artifacts.test.mjs",
+    "test:plugins": "python3 -B -m unittest tests.test_assemble_plugins",
+    "check:boundaries": "node scripts/check_package_boundaries.mjs .",
+    "check:engine-pack": "node scripts/check_engine_pack.mjs .",
+    "check:plugins": "python3 -B scripts/assemble_plugins.py --check",
+    "package:preview:codex": "pnpm run build && node packages/cli/scripts/assemble-preview-package.mjs --output artifacts/distilly-0.1.0-preview.1-codex --force",
+    "snapshots": "pnpm -r --if-present run snapshots",
+    "docs": "python3 -B scripts/verify_docs.py",
+    "build": "node scripts/clean_build_outputs.mjs . && tsc -b --force",
+    "smoke:built": "pnpm -r --if-present run smoke:built",
+    "hygiene": "pnpm run check:boundaries && pnpm run check:plugins && knip && pnpm run smoke:built && pnpm run check:engine-pack && pnpm -r exec publint && pnpm -r exec attw --pack --profile esm-only .",
+    "gates": "pnpm run gates:fast && pnpm run typecheck && pnpm run test && pnpm run test:coverage && pnpm run snapshots && pnpm run docs && pnpm run build && pnpm run hygiene"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.8.1",
+    "eslint-plugin-jsdoc": "63.0.1",
+    "knip": "6.32.2",
+    "prettier": "3.9.6",
+    "publint": "0.3.24",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.11"
+  },
+  "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
+}

@@ -1,0 +1,48 @@
+{
+  "name": "@distilly/cli",
+  "version": "0.1.0-preview.1",
+  "description": "Outer product composition for the Distilly Developer Preview.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "bin": {
+    "distilly": "./lib/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./preview": {
+      "types": "./lib/preview.d.ts",
+      "default": "./lib/preview.js"
+    }
+  },
+  "files": [
+    "lib",
+    "!lib/**/*.test.*"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@distilly/bindings": "workspace:*",
+    "@distilly/mcp": "workspace:*",
+    "@distilly/panel": "workspace:*",
+    "@distilly/protocol": "workspace:*",
+    "@distilly/runtime": "workspace:*",
+    "distilly": "workspace:*"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "esbuild": "0.27.4",
+    "playwright": "1.62.1"
+  },
+  "scripts": {
+    "serve:host-capacity-fixture": "node scripts/host-capacity-fixture-server.mjs",
+    "smoke:built": "node scripts/smoke-built.mjs && node scripts/smoke-lifecycle-built.mjs && node scripts/smoke-package-built.mjs",
+    "verify:host-capacity": "node scripts/verify-host-capacity-fixture.mjs",
+    "verify:package:codex": "node scripts/verify-codex-package.mjs"
+  }
+}

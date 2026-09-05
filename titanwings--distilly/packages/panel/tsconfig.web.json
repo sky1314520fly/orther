@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/web",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "types": [],
+    "tsBuildInfoFile": "tsconfig.web.tsbuildinfo"
+  },
+  "files": [
+    "src/browser-app.ts",
+    "src/transport.ts",
+    "src/web.ts",
+    "src/web-client.ts",
+    "src/web-fragment.ts",
+    "src/web-recovery.ts",
+    "src/web-sse.ts",
+    "src/web-ui.ts"
+  ],
+  "references": [{ "path": "../protocol" }]
+}

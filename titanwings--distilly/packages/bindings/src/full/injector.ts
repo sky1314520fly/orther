@@ -1,0 +1,408 @@
+import { createHash, randomUUID } from "node:crypto";
+import { lstat, mkdir, readFile, rename, rm, rmdir, unlink, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+
+import {
+  DistillyError,
+  contentDigestSchema,
+  installRefSchema,
+  isoDateTimeSchema,
+  profileSchema,
+  type ContentDigest,
+  type ExportOptions,
+  type ExportRef,
+  type HostName,
+  type InstallOptions,
+  type InstallRef,
+  type Profile,
+} from "@distilly/protocol";
+
+import type { HostInjector, HostSpawnRequest, Injection } from "../protocol.js";
+
+const INSTALL_MANIFEST = ".distilly-install.json";
+const SKILL_FILE = "SKILL.md";
+
+interface PersonInstallManifest {
+  readonly schemaVersion: 1;
+  readonly install: InstallRef;
+  readonly files: readonly [{ readonly path: "SKILL.md"; readonly contentDigest: ContentDigest }];
+}
+
+const invalid = (message: string, fieldPath?: string): DistillyError =>
+  new DistillyError({
+    code: "invalid_input",
+    message,
+    retryable: false,
+    ...(fieldPath === undefined ? {} : { fieldPath }),
+  });
+
+const modified = (): DistillyError =>
+  new DistillyError({
+    code: "storage_corrupt",
+    message: "The installed person Skill was modified outside Distilly.",
+    retryable: false,
+    remediation: "Back up the modified Skill before removing or reinstalling it.",
+  });
+
+const digest = (bytes: Uint8Array | string): ContentDigest =>
+  contentDigestSchema.parse(`sha256_${createHash("sha256").update(bytes).digest("hex")}`);
+
+const compareUtf8 = (left: string, right: string): number =>
+  Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8"));
+
+const canonicalize = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => compareUtf8(left, right))
+        .map(([key, child]) => [key, canonicalize(child)]),
+    );
+  }
+  return value;
+};
+
+const canonicalJson = (value: unknown): string => JSON.stringify(canonicalize(value));
+
+const hasExactKeys = (value: Record<string, unknown>, keys: readonly string[]): boolean => {
+  const actual = Object.keys(value).sort(compareUtf8);
+  const expected = [...keys].sort(compareUtf8);
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+};
+
+const isInside = (root: string, candidate: string): boolean => {
+  const path = relative(root, candidate);
+  return path === "" || (!path.startsWith(`..${sep}`) && path !== "..");
+};
+
+const slug = (value: string): string => {
+  const normalized = value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "")
+    .slice(0, 36);
+  return normalized.length === 0 ? "person" : normalized;
+};
+
+const skillName = (profile: Profile): string => {
+  const suffix = createHash("sha256").update(profile.subjectId).digest("hex").slice(0, 10);
+  return `distilly-${slug(profile.displayName)}-${suffix}`;
+};
+
+const renderPersonSkill = (profile: Profile, name: string): string => {
+  const metadata = canonicalJson({
+    displayName: profile.displayName,
+    maturity: profile.quality.maturity,
+    subjectId: profile.subjectId,
+    versionId: profile.versionId,
+  });
+  const rendered = profile.rendered.endsWith("\n") ? profile.rendered : `${profile.rendered}\n`;
+  return (
+    "---\n" +
+    `name: ${name}\n` +
+    "description: Use one evidence-grounded Distilly Person Profile when the user explicitly selects it.\n" +
+    "---\n\n" +
+    "# Distilly Person Profile\n\n" +
+    "Use this Profile only when the user explicitly asks to work with this person's perspective.\n\n" +
+    "## Subject metadata\n\n" +
+    `    ${metadata}\n\n` +
+    rendered +
+    "\n## Behavior constraints\n\n" +
+    "- This is an evidence-bounded simulation, not the person.\n" +
+    "- Do not invent facts that are not recorded.\n" +
+    "- Preserve recorded boundaries and explicitly acknowledge contested claims.\n"
+  );
+};
+
+const defaultSkillsRoot = (host: HostName, homeDirectory: string): string => {
+  if (host === "codex") return join(homeDirectory, ".codex", "skills");
+  if (host === "claude-code") return join(homeDirectory, ".claude", "skills");
+  if (host === "openclaw") return join(homeDirectory, ".openclaw", "skills");
+  if (host === "hermes") return join(homeDirectory, ".hermes", "skills");
+  throw invalid(`No default Skill directory is defined for host ${host}.`);
+};
+
+const validateVersion = (
+  profile: Profile,
+  options: { readonly versionId?: Profile["versionId"] },
+): void => {
+  if (options.versionId !== undefined && options.versionId !== profile.versionId) {
+    throw invalid(
+      "The requested version does not match the supplied immutable Profile.",
+      "versionId",
+    );
+  }
+};
+
+const personInstallId = (install: Omit<InstallRef, "id" | "installedAt">): string =>
+  `install-${createHash("sha256")
+    .update(
+      `${install.host}\0${install.subjectId}\0${install.versionId}\0${install.path}\0${install.contentDigest}`,
+    )
+    .digest("hex")
+    .slice(0, 24)}`;
+
+const hasSameInstallIdentity = (
+  install: InstallRef,
+  expected: Omit<InstallRef, "id" | "installedAt">,
+): boolean =>
+  install.id === personInstallId(expected) &&
+  install.host === expected.host &&
+  install.subjectId === expected.subjectId &&
+  install.versionId === expected.versionId &&
+  install.path === expected.path &&
+  install.contentDigest === expected.contentDigest;
+
+const parseManifest = (bytes: Uint8Array): PersonInstallManifest => {
+  let value: unknown;
+  try {
+    value = JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch {
+    throw modified();
+  }
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw modified();
+  const manifest = value as Record<string, unknown>;
+  const parsedInstall = installRefSchema.safeParse(manifest.install);
+  const files = manifest.files;
+  const file: unknown = Array.isArray(files) ? (files as unknown[])[0] : undefined;
+  if (
+    !hasExactKeys(manifest, ["schemaVersion", "install", "files"]) ||
+    manifest.schemaVersion !== 1 ||
+    !parsedInstall.success ||
+    !Array.isArray(files) ||
+    files.length !== 1 ||
+    file === null ||
+    typeof file !== "object" ||
+    Array.isArray(file) ||
+    !hasExactKeys(file as Record<string, unknown>, ["path", "contentDigest"]) ||
+    (file as Record<string, unknown>).path !== SKILL_FILE ||
+    !contentDigestSchema.safeParse((file as Record<string, unknown>).contentDigest).success
+  ) {
+    throw modified();
+  }
+  const contentDigest = (file as { contentDigest: ContentDigest }).contentDigest;
+  if (parsedInstall.data.contentDigest !== contentDigest) throw modified();
+  return {
+    schemaVersion: 1,
+    install: parsedInstall.data,
+    files: [{ path: SKILL_FILE, contentDigest }],
+  };
+};
+
+const readRegularFile = async (path: string): Promise<Uint8Array> => {
+  try {
+    const metadata = await lstat(path);
+    if (!metadata.isFile() || metadata.isSymbolicLink()) throw modified();
+    return Uint8Array.from(await readFile(path));
+  } catch {
+    throw modified();
+  }
+};
+
+const readVerifiedInstall = async (
+  root: string,
+  expectedHost: HostName,
+): Promise<PersonInstallManifest> => {
+  try {
+    const metadata = await lstat(root);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) throw modified();
+  } catch {
+    throw modified();
+  }
+  const manifestPath = resolve(root, INSTALL_MANIFEST);
+  const skillPath = resolve(root, SKILL_FILE);
+  if (!isInside(root, manifestPath) || !isInside(root, skillPath)) throw modified();
+  const manifest = parseManifest(await readRegularFile(manifestPath));
+  const install = manifest.install;
+  if (
+    install.host !== expectedHost ||
+    !isAbsolute(install.path) ||
+    resolve(install.path) !== root ||
+    install.id !==
+      personInstallId({
+        host: install.host,
+        subjectId: install.subjectId,
+        versionId: install.versionId,
+        path: install.path,
+        contentDigest: install.contentDigest,
+      })
+  ) {
+    throw modified();
+  }
+  if (digest(await readRegularFile(skillPath)) !== install.contentDigest) throw modified();
+  return manifest;
+};
+
+const installProfile = async (
+  host: HostName,
+  homeDirectory: string,
+  now: () => Date,
+  profileValue: Profile,
+  options: InstallOptions,
+): Promise<InstallRef> => {
+  const profile = profileSchema.parse(profileValue) as Profile;
+  validateVersion(profile, options);
+  const name = skillName(profile);
+  const root =
+    options.destination === undefined
+      ? join(defaultSkillsRoot(host, homeDirectory), name)
+      : resolveDestination(options.destination);
+  const skill = renderPersonSkill(profile, name);
+  const contentDigest = digest(skill);
+  const identity = {
+    host,
+    subjectId: profile.subjectId,
+    versionId: profile.versionId,
+    path: root,
+    contentDigest,
+  } as const;
+
+  const existing = await lstat(root).catch(() => undefined);
+  if (existing !== undefined) {
+    if (!existing.isDirectory() || existing.isSymbolicLink()) {
+      throw invalid("The person Skill destination already exists and is not a regular directory.");
+    }
+    const current = await readVerifiedInstall(root, host);
+    if (hasSameInstallIdentity(current.install, identity)) return current.install;
+    throw invalid(
+      "The person Skill destination already contains another or modified installation.",
+    );
+  }
+
+  const install: InstallRef = {
+    id: personInstallId(identity),
+    ...identity,
+    installedAt: isoDateTimeSchema.parse(now().toISOString()),
+  };
+  const manifest: PersonInstallManifest = {
+    schemaVersion: 1,
+    install,
+    files: [{ path: SKILL_FILE, contentDigest }],
+  };
+
+  await mkdir(dirname(root), { recursive: true });
+  const transactionRoot = join(homeDirectory, ".distilly", "host-install");
+  await mkdir(transactionRoot, { recursive: true });
+  const staging = join(transactionRoot, `${host}-person-${randomUUID()}`);
+  try {
+    await mkdir(staging);
+    await writeFile(join(staging, SKILL_FILE), skill, { mode: 0o644 });
+    await writeFile(join(staging, INSTALL_MANIFEST), `${canonicalJson(manifest)}\n`, {
+      mode: 0o600,
+    });
+    await rename(staging, root);
+  } catch (error) {
+    await rm(staging, { recursive: true, force: true });
+    throw error;
+  }
+  return install;
+};
+
+const resolveDestination = (destination: string): string => {
+  if (!isAbsolute(destination)) {
+    throw invalid("A person Skill destination must be an absolute path.", "destination");
+  }
+  return resolve(destination);
+};
+
+const uninstallProfile = async (host: HostName, ref: InstallRef): Promise<void> => {
+  const parsedRef = installRefSchema.safeParse(ref);
+  if (!parsedRef.success) throw invalid("The installation reference is invalid.", "ref");
+  if (parsedRef.data.host !== host) {
+    throw invalid("The installation belongs to another host.", "ref.host");
+  }
+  const root = resolveDestination(parsedRef.data.path);
+  const existing = await lstat(root).catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (existing === undefined) return;
+  const manifest = await readVerifiedInstall(root, host);
+  if (canonicalJson(manifest.install) !== canonicalJson(parsedRef.data)) throw modified();
+  const skillPath = resolve(root, SKILL_FILE);
+  await unlink(skillPath);
+  await unlink(join(root, INSTALL_MANIFEST));
+  await rmdir(root).catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code !== "ENOTEMPTY") throw error;
+  });
+};
+
+const exportProfile = async (
+  host: HostName,
+  profileValue: Profile,
+  options: ExportOptions,
+): Promise<ExportRef> => {
+  const profile = profileSchema.parse(profileValue) as Profile;
+  validateVersion(profile, options);
+  const destination = resolveDestination(options.destination);
+  const content = renderPersonSkill(profile, skillName(profile));
+  const contentDigest = digest(content);
+  await mkdir(dirname(destination), { recursive: true });
+  const existing = await lstat(destination).catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (existing !== undefined) {
+    if (!existing.isFile() || existing.isSymbolicLink()) {
+      throw invalid("The export destination is not a regular file.", "destination");
+    }
+    if (digest(await readFile(destination)) === contentDigest) {
+      return {
+        host,
+        subjectId: profile.subjectId,
+        versionId: profile.versionId,
+        path: destination,
+        contentDigest,
+      };
+    }
+  }
+  if (!options.overwrite) {
+    await writeFile(destination, content, { mode: 0o600, flag: "wx" }).catch((error: unknown) => {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+        throw invalid("The export destination already exists.", "destination");
+      }
+      throw error;
+    });
+  } else {
+    await writeFile(destination, content, { mode: 0o600 });
+  }
+  return {
+    host,
+    subjectId: profile.subjectId,
+    versionId: profile.versionId,
+    path: destination,
+    contentDigest,
+  };
+};
+
+/**
+ * Creates one real host injector without touching global instruction files.
+ *
+ * @param host - Host that owns the projection.
+ * @param homeDirectory - Explicit user home used for default Skill paths.
+ * @param now - Trusted installation clock.
+ * @returns Concrete prompt and person-projection injector.
+ */
+export const createHostInjector = (
+  host: HostName,
+  homeDirectory: string,
+  now: () => Date,
+): HostInjector =>
+  Object.freeze({
+    host,
+    injectSubrun: (injection: Injection, request: HostSpawnRequest): HostSpawnRequest => ({
+      ...request,
+      instructions: [...request.instructions, injection.prompt],
+      metadata: {
+        ...request.metadata,
+        "distilly.subjectId": injection.subjectId,
+        "distilly.versionId": injection.versionId,
+      },
+    }),
+    install: (profile: Profile, options: InstallOptions) =>
+      installProfile(host, homeDirectory, now, profile, options),
+    uninstall: (ref: InstallRef) => uninstallProfile(host, ref),
+    exportIdentity: (profile: Profile, options: ExportOptions) =>
+      exportProfile(host, profile, options),
+  });

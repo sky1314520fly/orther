@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v2",
+  "host": "hermes",
+  "hostVersion": "Hermes Agent v0.9.0 (2026.4.13)",
+  "environment": "cli",
+  "releaseVersion": "0.1.0-preview.1",
+  "wireMajor": 3,
+  "canonicalSkillDigest": "sha256_83b9b45faf76c184a5605b1ec6e2f7007d440813d3314f58a4250246c5de44a9",
+  "toolContractDigest": "sha256_a5ef4303fa29360416008448f12dd4b01f325143633e7fa2298c2094f73a6eda",
+  "schemaProfile": "hermes",
+  "advertisedToolContractDigest": "sha256_cb214ba3d6c23bdd25bbd8327e5987bec55735224ec4a6f35acf4c92a304f38e",
+  "probeContractDigest": "sha256_c7e2ae4afcdedd3d59e9ffd50ffca8c4d8c6449f82977fc167f171204497bd77",
+  "serializer": "structured-content-plus-json-text-v1",
+  "capacity": {
+    "maximumInputTokens": 49752,
+    "maximumToolResultBytes": 49752
+  },
+  "observed": {
+    "briefingBytes": 49752,
+    "toolResultBytes": 49752,
+    "structuredTextDeepEqual": true,
+    "modelObservedBothTailMarkers": true,
+    "normalizedTranscriptDigest": "sha256_f0824c66221b2ad522de74c393d661bff98ba2324480985d0ec1974fef60fec5"
+  },
+  "verifiedAt": "2026-09-03T18:10:30.215Z"
+}

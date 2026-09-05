@@ -1,0 +1,35 @@
+export { AdapterRegistry } from "./registry.js";
+export { createBuiltinParserRegistry } from "./builtin-parsers.js";
+export { ParserRegistry } from "./parser-registry.js";
+export { userCollectionMethodSchemas } from "./schemas.js";
+export type {
+  AdapterCapabilities,
+  AdapterConfig,
+  AdapterPreflightResult,
+  AdapterResource,
+  AdapterResourceSchema,
+  AgentPlan,
+  CollectRequest,
+  DelegatedSourceAdapter,
+  DirectSourceAdapter,
+  ExternalSubjectRef,
+  MaterialParser,
+  ParseContext,
+  ParsedMaterial,
+  ParsedMaterialDraft,
+  ParserTextExtraction,
+  RawMaterial,
+  SourceActionInput,
+  SourceAdapter,
+  SourceAdapterBase,
+  SourceAdapterRegistration,
+  SourceCollectResult,
+  SourceConfigureInput,
+  SourceMutationActionName,
+  SourcePreflightResult,
+  SourceQueryActionName,
+  SourceStatus,
+  UserCollectionClient,
+  UserCollectionMethodMap,
+  UserCollectionSelection,
+} from "./contracts.js";

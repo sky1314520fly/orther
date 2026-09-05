@@ -1,0 +1,41 @@
+{
+  "name": "@distilly/mcp",
+  "version": "0.1.0-preview.1",
+  "description": "Transport-neutral MCP presenters for an injected Distilly EngineClient.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./stdio": {
+      "types": "./lib/stdio.d.ts",
+      "default": "./lib/stdio.js"
+    },
+    "./internal/schema": {
+      "types": "./lib/internal-schema.d.ts",
+      "default": "./lib/internal-schema.js"
+    }
+  },
+  "files": [
+    "lib",
+    "!lib/**/*.test.*",
+    "!lib/testing/**"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@distilly/protocol": "workspace:*",
+    "@modelcontextprotocol/server": "2.0.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0"
+  },
+  "scripts": {
+    "smoke:built": "node scripts/smoke-built.mjs",
+    "snapshots": "node scripts/check-public-api.mjs"
+  }
+}

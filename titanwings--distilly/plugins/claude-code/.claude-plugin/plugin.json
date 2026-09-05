@@ -1,0 +1,10 @@
+{
+  "name": "distilly",
+  "displayName": "Distilly",
+  "version": "0.1.0-preview.1",
+  "description": "Build evidence-grounded local person profiles through Distilly's five-tool workflow.",
+  "author": {
+    "name": "Distilly"
+  },
+  "skills": "./skills/"
+}

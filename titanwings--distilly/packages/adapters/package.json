@@ -1,0 +1,29 @@
+{
+  "name": "@distilly/adapters",
+  "version": "0.0.0",
+  "description": "Source-adapter contracts and direct-user collection schemas for Distilly.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib",
+    "!lib/**/*.test.*"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@distilly/protocol": "workspace:*",
+    "zod": "4.4.3"
+  },
+  "scripts": {
+    "smoke:built": "node scripts/smoke-built.mjs",
+    "snapshots": "node scripts/check-public-api.mjs"
+  }
+}

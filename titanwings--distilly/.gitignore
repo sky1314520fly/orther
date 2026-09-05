@@ -1,0 +1,57 @@
+# Personal agent/developer instructions (kept local, never published)
+.agents/
+.githooks/
+AGENTS.md
+CLAUDE.md
+/.codex/
+/.claude/
+
+# Local configuration, credentials, and product data
+.env
+.env.*
+!.env.example
+/adapters.toml
+/distilly.toml
+/.colleague-skill/
+/.distilly/
+/knowledge/
+/skills/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Old verification/community files that do not belong to the Plugin branch
+/SKILL.md
+/openarena-claim.txt
+/docs/assets/wechat-group-qr-*.png
+
+# TypeScript workspace output
+node_modules/
+packages/*/lib/
+coverage/
+artifacts/
+*.tsbuildinfo
+
+# Python tooling output
+__pycache__/
+*.py[cod]
+*.pyo
+.coverage
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Browser and test output
+playwright-data/
+playwright-report/
+test-results/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

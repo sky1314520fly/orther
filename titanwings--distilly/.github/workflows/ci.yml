@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [dot-skill, distilly, distilly-plugin, main]
+  pull_request:
+    branches: [dot-skill, distilly, distilly-plugin, main]
+
+permissions:
+  contents: read
+
+jobs:
+  repository:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Documentation contracts
+        run: python -B scripts/verify_docs.py
+      - name: Whitespace (PR)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --check "$BASE_SHA...$HEAD_SHA"
+      - name: Whitespace (push)
+        if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          case "$BEFORE_SHA" in
+            "") echo "Push event has no before SHA" >&2; exit 1 ;;
+            *[!0]*) git diff --check "$BEFORE_SHA..$HEAD_SHA" ;;
+            *) git diff-tree --check --root "$HEAD_SHA" ;;
+          esac
+
+  typescript:
+    name: TypeScript Node ${{ matrix.node-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node-version: ["22.19.0", "24"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install TypeScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium and Linux browser dependencies
+        if: runner.os == 'Linux'
+        run: pnpm --filter @distilly/panel exec playwright install --with-deps chromium
+
+      - name: Install Chromium
+        if: runner.os == 'macOS'
+        run: pnpm --filter @distilly/panel exec playwright install chromium
+
+      - name: Run fast TypeScript gates
+        run: pnpm run gates:fast
+
+      - name: Type-check packages
+        run: pnpm run typecheck
+
+      - name: Run TypeScript tests
+        run: pnpm run test
+
+      - name: Report TypeScript coverage
+        run: pnpm run test:coverage
+
+      - name: Verify readable snapshots
+        run: pnpm run snapshots
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Check package hygiene
+        run: pnpm run hygiene
+
+  test:
+    name: Repository Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile all Python sources
+        run: python -m compileall -q scripts tests
+
+      - name: Run unit tests
+        run: python -B scripts/run_tests.py
+
+  lint:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install lint dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run Ruff
+        run: ruff check scripts tests

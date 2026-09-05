@@ -1,0 +1,31 @@
+{
+  "name": "distilly",
+  "version": "0.0.0",
+  "description": "Browser-safe typed facade for Distilly engine clients.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^22.19 || ^24"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib",
+    "!lib/**/*.test.*"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@distilly/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.4"
+  },
+  "scripts": {
+    "smoke:built": "node scripts/smoke-built.mjs",
+    "snapshots": "node scripts/check-public-api.mjs && node scripts/check-browser-bundle.mjs"
+  }
+}

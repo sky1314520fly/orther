@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "distilly": {
+      "command": "__DISTILLY_LAUNCHER_ABSOLUTE_PATH__",
+      "args": ["mcp"]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# Markdown belongs to the documentation gates, which require one physical line
+# per paragraph. A formatter that rewraps prose would fight them.
+*.md
+
+# Build output and dependencies.
+lib/
+node_modules/
+coverage/
+
+# Python repository tools.
+/scripts/
+/tests/
+
+# Plugin release bytes are generated and verified by assemble_plugins.py.
+/plugins/release-manifest.json
+/plugins/codex/.codex-plugin/plugin.json
+/plugins/claude-code/.claude-plugin/plugin.json

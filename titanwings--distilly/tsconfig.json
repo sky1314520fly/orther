@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/protocol" },
+    { "path": "packages/adapters" },
+    { "path": "packages/engine" },
+    { "path": "packages/runtime" },
+    { "path": "packages/bindings" },
+    { "path": "packages/distilly" },
+    { "path": "packages/mcp" },
+    { "path": "packages/panel" },
+    { "path": "packages/cli" }
+  ]
+}

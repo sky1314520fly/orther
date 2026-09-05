@@ -1,0 +1,23 @@
+{
+  "name": "distilly",
+  "version": "0.1.0-preview.1",
+  "description": "Build evidence-grounded local person profiles through Distilly's five-tool workflow.",
+  "author": {
+    "name": "Distilly"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Distilly",
+    "shortDescription": "Build evidence-grounded local person profiles.",
+    "longDescription": "Research, ingest, distill, review, and recall local person profiles through an evidence-bound five-tool workflow.",
+    "developerName": "Distilly",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Research and distill a person profile with Distilly."
+    ]
+  }
+}
