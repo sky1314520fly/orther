@@ -57,3 +57,4 @@
 | [nexu-io/open-design](nexu-io--open-design/) | 94126 | 536 | `Apache-2.0` | `main` | [`50e305dff2b6`](https://github.com/nexu-io/open-design/commit/50e305dff2b64d9dc0220e5dfa5d8c98ba4364e3) |
 | [openai/codex-plugin-cc](openai--codex-plugin-cc/) | 32781 | 3 | `Apache-2.0` | `main` | [`db52e28f4d9d`](https://github.com/openai/codex-plugin-cc/commit/db52e28f4d9ded852ab3942cea316258ae4ef346) |
 | [shanraisshan/claude-code-best-practice](shanraisshan--claude-code-best-practice/) | 65618 | 9 | `MIT` | `main` | [`d75728922423`](https://github.com/shanraisshan/claude-code-best-practice/commit/d75728922423d3231103e9eee90b75480385ef4c) |
+| [wshobson/agents](wshobson--agents/) | 39427 | 183 | `MIT` | `main` | [`a30778f8c4e6`](https://github.com/wshobson/agents/commit/a30778f8c4e6b0a87567941b7cca4f534bf642b6) |
