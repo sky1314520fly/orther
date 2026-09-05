@@ -1,0 +1,149 @@
+name: Import popular AI skill repositories
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-popular-skills.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Import verified repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          repos=(
+            "DietrichGebert/ponytail"
+            "Donchitos/Claude-Code-Game-Studios"
+            "Imbad0202/academic-research-skills"
+            "JimLiu/baoyu-skills"
+            "JuliusBrussee/caveman"
+            "K-Dense-AI/scientific-agent-skills"
+            "KKKKhazix/khazix-skills"
+            "Leonxlnx/taste-skill"
+            "OthmanAdi/planning-with-files"
+            "Yuan1z0825/nature-skills"
+            "addyosmani/agent-skills"
+            "affaan-m/ECC"
+            "alchaincyf/huashu-design"
+            "alibaba/open-code-review"
+            "alirezarezvani/claude-skills"
+            "anthropics/claude-plugins-official"
+            "ayghri/i-have-adhd"
+            "blader/humanizer"
+            "bytedance/deer-flow"
+            "cathrynlavery/diagram-design"
+            "coreyhaines31/marketingskills"
+            "emilkowalski/skills"
+            "freestylefly/awesome-gpt-image-2"
+            "github/awesome-copilot"
+            "kepano/obsidian-skills"
+            "mattpocock/skills"
+            "mukul975/Anthropic-Cybersecurity-Skills"
+            "mvanhorn/last30days-skill"
+            "nextlevelbuilder/ui-ux-pro-max-skill"
+            "obra/superpowers"
+            "op7418/guizang-ppt-skill"
+            "phuryn/pm-skills"
+            "sickn33/agentic-awesome-skills"
+            "titanwings/distilly"
+            "tt-a1i/archify"
+            "vercel-labs/skills"
+            "virgiliojr94/book-to-skill"
+            "zarazhangrui/frontend-slides"
+            "zhaoxuya520/reverse-skill"
+          )
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          printf '# GitHub 高星 AI Skills 仓库索引\n\n' > /tmp/skills-index.md
+          printf '> 筛选时间：2026-09-05；条件：GitHub Stars > 20,000、仓库包含 `SKILL.md`、属于 AI Agent Skills 相关项目，并具有明确许可证。\n\n' >> /tmp/skills-index.md
+          printf '| 项目 | Stars | SKILL.md 数量 | License | 上游分支 | 上游 commit |\n' >> /tmp/skills-index.md
+          printf '|---|---:|---:|---|---|---|\n' >> /tmp/skills-index.md
+
+          for repo in "${repos[@]}"; do
+            owner=${repo%%/*}
+            name=${repo#*/}
+            dest="${owner}--${name}"
+            tmp="/tmp/import-${owner}-${name}"
+            rm -rf "$tmp" "$dest"
+            git clone --depth=1 --filter=blob:none "https://github.com/${repo}.git" "$tmp"
+            commit=$(git -C "$tmp" rev-parse HEAD)
+            branch=$(git -C "$tmp" branch --show-current)
+            skill_count=$(find "$tmp" -type f -name SKILL.md -not -path '*/.git/*' | wc -l)
+            if [ "$skill_count" -eq 0 ]; then
+              echo "No SKILL.md found in ${repo}" >&2
+              exit 1
+            fi
+            if find "$tmp" -type f -not -path '*/.git/*' -size +99M -print -quit | grep -q .; then
+              echo "A file exceeds GitHub's 100 MiB limit in ${repo}" >&2
+              exit 1
+            fi
+            stars=$(gh api "repos/${repo}" --jq '.stargazers_count')
+            if [ "$stars" -le 20000 ]; then
+              echo "Star threshold no longer met by ${repo}" >&2
+              exit 1
+            fi
+            license=$(gh api "repos/${repo}" --jq '.license.spdx_id // "SEE-LICENSE"')
+            mkdir -p "$dest"
+            cp -a "$tmp"/. "$dest"/
+            rm -rf "$dest/.git"
+            git add -f "$dest"
+            if ! git diff --cached --quiet; then
+              git commit -m "chore(skills): import ${repo} at ${commit}"
+              git push
+            fi
+            printf '| [%s](%s/) | %s | %s | `%s` | `%s` | [`%s`](https://github.com/%s/commit/%s) |\n' "$repo" "$dest" "$stars" "$skill_count" "$license" "$branch" "${commit:0:12}" "$repo" "$commit" >> /tmp/skills-index.md
+            rm -rf "$tmp"
+          done
+
+          cp /tmp/skills-index.md SKILLS_INDEX.md
+          git add SKILLS_INDEX.md
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: add popular AI skills repository index"
+            git push
+          fi
+
+      - name: Write excluded repository report
+        shell: bash
+        run: |
+          cat > SKILLS_EXCLUDED.md <<'EOF'
+          # 未导入的高星候选仓库
+
+          以下候选仓库虽然包含 `SKILL.md` 且 Stars 大于 20,000，但未发现清晰的仓库级许可证，因此未写入：
+
+          - `ComposioHQ/awesome-claude-skills`
+          - `anthropics/skills`
+          - `multica-ai/andrej-karpathy-skills`
+          - `openai/skills`
+          - `vercel-labs/agent-skills`
+
+          其他被搜索命中的高星项目因不属于 AI Skills 仓库或未发现实际 `SKILL.md` 而未导入。
+          EOF
+          git add SKILLS_EXCLUDED.md
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: record excluded skills repositories"
+            git push
+          fi
+
+      - name: Remove one-time importer
+        shell: bash
+        run: |
+          git pull --rebase
+          git rm .github/workflows/import-popular-skills.yml
+          git commit -m "chore: remove completed one-time skills importer"
+          git push
