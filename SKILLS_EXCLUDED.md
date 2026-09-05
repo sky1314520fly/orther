@@ -9,3 +9,6 @@
 - `vercel-labs/agent-skills`
 
 其他被搜索命中的高星项目因不属于 AI Skills 仓库或未发现实际 `SKILL.md` 而未导入。
+
+- `Yeachan-Heo/oh-my-codex`：未发现明确的仓库级许可证。
+- `claude-code-best/claude-code`：未发现明确的仓库级许可证。
