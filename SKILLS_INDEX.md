@@ -44,3 +44,4 @@
 | [zarazhangrui/frontend-slides](zarazhangrui--frontend-slides/) | 28743 | 2 | `MIT` | `main` | [`9906a34d640d`](https://github.com/zarazhangrui/frontend-slides/commit/9906a34d640d2111f724544cbc50f7f130569ae1) |
 | [zhaoxuya520/reverse-skill](zhaoxuya520--reverse-skill/) | 34580 | 89 | `MIT` | `main` | [`7e2097fd90d2`](https://github.com/zhaoxuya520/reverse-skill/commit/7e2097fd90d25c2f976f6eba26d6c00aa88051df) |
 | [github/spec-kit](github--spec-kit/) | 133521 | 1 | `MIT` | `main` | [`4a7341a93d94`](https://github.com/github/spec-kit/commit/4a7341a93d944d6efe153b71da4a1adb9c2b578c) |
+| [EveryInc/compound-engineering-plugin](EveryInc--compound-engineering-plugin/) | 24847 | 40 | `MIT` | `main` | [`57e409e5c8c2`](https://github.com/EveryInc/compound-engineering-plugin/commit/57e409e5c8c2c472106bd7d87ac72b724b70826b) |
