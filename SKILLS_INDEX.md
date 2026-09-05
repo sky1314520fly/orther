@@ -66,3 +66,4 @@
 | [different-ai/openwork](different-ai--openwork/) | 23337 | 21 | `NOASSERTION` | `dev` | [`0e09eab927fe`](https://github.com/different-ai/openwork/commit/0e09eab927fe66ffbdbc13c9f8eca4e264262bc8) |
 | [2025Emma/vibe-coding-cn](2025Emma--vibe-coding-cn/) | 22939 | 30 | `MIT` | `main` | [`9b42dd10ddf3`](https://github.com/2025Emma/vibe-coding-cn/commit/9b42dd10ddf3fff58f8c7a4d347175db107d7bf9) |
 | [HKUDS/CLI-Anything](HKUDS--CLI-Anything/) | 48997 | 151 | `Apache-2.0` | `main` | [`810c18b0d1ab`](https://github.com/HKUDS/CLI-Anything/commit/810c18b0d1ab9b234bc996c9fd999318523a3ef0) |
+| [openai/symphony](openai--symphony/) | 27039 | 7 | `Apache-2.0` | `main` | [`8001b52e3062`](https://github.com/openai/symphony/commit/8001b52e3062495a16e520e4ceaf8f9de868c4d0) |
