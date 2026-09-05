@@ -59,3 +59,4 @@
 | [shanraisshan/claude-code-best-practice](shanraisshan--claude-code-best-practice/) | 65618 | 9 | `MIT` | `main` | [`d75728922423`](https://github.com/shanraisshan/claude-code-best-practice/commit/d75728922423d3231103e9eee90b75480385ef4c) |
 | [wshobson/agents](wshobson--agents/) | 39427 | 183 | `MIT` | `main` | [`a30778f8c4e6`](https://github.com/wshobson/agents/commit/a30778f8c4e6b0a87567941b7cca4f534bf642b6) |
 | [bmad-code-org/BMAD-METHOD](bmad-code-org--BMAD-METHOD/) | 52682 | 60 | `NOASSERTION` | `main` | [`05bfbd46d007`](https://github.com/bmad-code-org/BMAD-METHOD/commit/05bfbd46d00766ec88eb9b42e76be2c575d64d7b) |
+| [anthropics/knowledge-work-plugins](anthropics--knowledge-work-plugins/) | 23882 | 212 | `Apache-2.0` | `main` | [`1f517b9de47e`](https://github.com/anthropics/knowledge-work-plugins/commit/1f517b9de47e827c80cd933ed364e16838072239) |
