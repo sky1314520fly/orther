@@ -12,3 +12,5 @@
 
 - `Yeachan-Heo/oh-my-codex`：未发现明确的仓库级许可证。
 - `claude-code-best/claude-code`：未发现明确的仓库级许可证。
+
+- `google-gemini/gemini-cli`：完整源码触发 GitHub Push Protection（检测到 OAuth/Stripe 密钥格式），为保持原源码不变且不绕过安全保护，未导入。
