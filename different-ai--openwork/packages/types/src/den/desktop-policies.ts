@@ -1,0 +1,672 @@
+import { z } from "zod";
+
+type DesktopPolicyDefinitionEntry = {
+  id: string;
+  name: string;
+  description: string;
+  userNotice: string;
+  defaultValue: boolean;
+  /**
+   * Value the Restricted policy mode locks this key to, or `null` when the key
+   * is a display preference that Restricted leaves editable.
+   */
+  restrictedValue: boolean | null;
+};
+
+// Canonical desktop policy catalog.
+//
+// To add a new desktop policy item:
+// 1. Add a matching entry to `desktopPolicyDefinitions` below.
+// 2. Choose a safe `defaultValue` for orgs with missing/older policy data.
+// 3. Choose its `restrictedValue`: the value the Restricted policy mode locks
+//    the key to, or `null` for a display preference Restricted leaves alone.
+// 4. Wire desktop app behavior to read the key through the desktop config hooks.
+// 5. If the key affects Den web editing copy, update the `name`, `description`,
+//    and `userNotice` here rather than duplicating that copy elsewhere.
+// 6. Do not manually edit `desktopPolicyValueSchema`; it is generated from the
+//    IDs in this definition list.
+//
+// Policy booleans usually use allow-style names. For every policy item,
+// `false` means the feature is restricted/disabled; `true` or an omitted value
+// means the app should not block the feature locally unless a default/effective
+// policy calculation supplies `false`.
+export const desktopPolicyDefinitions = [
+  {
+    id: "allowCustomProviders",
+    name: "Custom providers",
+    description:
+      "Allow users to add and use models that are not deployed through OpenWork Cloud.",
+    userNotice:
+      "Your organization administrator has disabled adding custom providers.",
+    defaultValue: true,
+    restrictedValue: false,
+  },
+  {
+    id: "allowZenModel",
+    name: "Enable OpenCode Zen Models",
+    description: "Allow users to use the built in models provided by OpenCode.",
+    userNotice: "Your administrator has disabled access to OpenCode Models.",
+    defaultValue: true,
+    restrictedValue: false,
+  },
+  {
+    id: "allowMultipleWorkspaces",
+    name: "Multiple workspaces",
+    description:
+      "Allow users to create or configure more than one workspace on their machine.",
+    userNotice:
+      "Your organization administrator has restricted access to adding additional workspaces.",
+    defaultValue: true,
+    restrictedValue: false,
+  },
+  {
+    id: "allowControlSettings",
+    name: "Control Settings",
+    description: "Allow users to access and change the desktop app settings.",
+    userNotice:
+      "Your organization administrator has disabled changing desktop app settings.",
+    defaultValue: true,
+    restrictedValue: false,
+  },
+  {
+    id: "allowManageExtensions",
+    name: "Manage Extensions",
+    description: "Allow users to install and manage extensions locally.",
+    userNotice:
+      "Your organization administrator has disabled local extension management.",
+    defaultValue: true,
+    restrictedValue: false,
+  },
+  {
+    id: "allowBuiltInExtensions",
+    name: "Built-in Extensions",
+    description:
+      "Allow users to see and use OpenWork's built-in extensions, including browser, image, and local-provider extensions.",
+    userNotice:
+      "Your organization administrator has disabled built-in OpenWork extensions.",
+    defaultValue: true,
+    restrictedValue: false,
+  },
+  {
+    id: "allowAlphaUpdates",
+    name: "Alpha updates",
+    description:
+      "Allow users to opt into experimental Alpha desktop updates.",
+    userNotice:
+      "Your organization administrator has disabled Alpha desktop updates.",
+    defaultValue: true,
+    restrictedValue: false,
+  },
+  {
+    id: "showWelcomePage",
+    name: "Welcome Page",
+    description: "Show the Getting Started page to new users.",
+    userNotice:
+      "Your organization administrator has disabled the Getting Started page.",
+    defaultValue: true,
+    restrictedValue: null,
+  },
+] as const satisfies readonly DesktopPolicyDefinitionEntry[];
+
+export type DesktopPolicyKey = (typeof desktopPolicyDefinitions)[number]["id"];
+export type DesktopPolicyDefinition = Omit<DesktopPolicyDefinitionEntry, "id"> & {
+  id: DesktopPolicyKey;
+};
+
+const desktopPolicyValueShape = Object.fromEntries(
+  desktopPolicyDefinitions.map((definition) => [
+    definition.id,
+    z.boolean().optional(),
+  ]),
+) as { [key in DesktopPolicyKey]: z.ZodOptional<z.ZodBoolean> };
+
+export const desktopPolicyValueSchema = z
+  .object(desktopPolicyValueShape)
+  .meta({ ref: "DenDesktopPolicyValue" });
+
+export type DesktopPolicyValue = z.infer<typeof desktopPolicyValueSchema>;
+
+export const onboardingPromptsSchema = z
+  .array(z.string().trim().min(1).max(500))
+  .min(2)
+  .max(3);
+
+export const onboardingPromptDescriptionsSchema = z
+  .array(z.string().trim().max(120))
+  .min(2)
+  .max(3);
+
+export type OnboardingPromptConfig = {
+  onboardingPrompts: string[];
+  onboardingPromptDescriptions?: string[];
+};
+
+// Explicit access limits are applied after legacy grants. Omitted access keeps
+// existing policies' grant semantics unchanged.
+export const teamAccessSchema = z.object({
+  mode: z.enum(["custom", "locked"]),
+  capabilities: desktopPolicyValueSchema,
+});
+export type TeamAccess = z.infer<typeof teamAccessSchema>;
+
+function normalizeTeamAccess(value: unknown): TeamAccess | undefined {
+  const raw = coerceJsonRecord(value);
+  const parsed = teamAccessSchema.safeParse(isRecord(raw) ? raw.access : undefined);
+  return parsed.success ? parsed.data : undefined;
+}
+
+export const desktopPolicyDocumentSchema = desktopPolicyValueSchema
+  .extend({
+    access: teamAccessSchema.optional(),
+    onboardingPrompts: onboardingPromptsSchema.optional(),
+    onboardingPromptDescriptions: onboardingPromptDescriptionsSchema.optional(),
+  })
+  .meta({ ref: "DenDesktopPolicyDocument" });
+
+export const desktopPolicyDocumentWriteSchema = desktopPolicyValueSchema
+  .extend({
+    access: teamAccessSchema.optional(),
+    onboardingPrompts: onboardingPromptsSchema.nullable().optional(),
+    onboardingPromptDescriptions: onboardingPromptDescriptionsSchema
+      .nullable()
+      .optional(),
+  })
+  .meta({ ref: "DenDesktopPolicyDocumentWrite" });
+
+export type DesktopPolicyDocument = z.infer<typeof desktopPolicyDocumentSchema>;
+export type DesktopPolicyDocumentWrite = z.infer<
+  typeof desktopPolicyDocumentWriteSchema
+>;
+export type DefaultDesktopPolicyDocument = Required<DesktopPolicyValue> & {
+  access?: TeamAccess;
+  onboardingPrompts?: string[];
+  onboardingPromptDescriptions?: string[];
+};
+
+export const desktopPolicyKeys = desktopPolicyDefinitions.map(
+  (definition) => definition.id,
+) as DesktopPolicyKey[];
+
+export const desktopPolicyDefaults = Object.fromEntries(
+  desktopPolicyDefinitions.map((definition) => [
+    definition.id,
+    definition.defaultValue,
+  ]),
+) as Required<DesktopPolicyValue>;
+
+/** Catalog copy the desktop app shows when a policy blocks a capability. */
+export const desktopPolicyUserNotices = Object.fromEntries(
+  desktopPolicyDefinitions.map((definition) => [
+    definition.id,
+    definition.userNotice,
+  ]),
+) as Record<DesktopPolicyKey, string>;
+
+// ---------------------------------------------------------------------------
+// Restricted policy mode: chat and organization-approved skills only.
+//
+// Restricted is an editor mode, not a stored flag. A policy is Restricted when
+// every key with a `restrictedValue` holds that value; display preferences
+// (`restrictedValue: null`) stay editable in both modes. Because the effective
+// policy is a union of grants, Restricted only locks members down when it is
+// applied to the default policy.
+// ---------------------------------------------------------------------------
+export function applyRestrictedDesktopPolicy(
+  value: Required<DesktopPolicyValue>,
+): Required<DesktopPolicyValue> {
+  return Object.fromEntries(
+    desktopPolicyDefinitions.map((definition) => [
+      definition.id,
+      definition.restrictedValue ?? value[definition.id],
+    ]),
+  ) as Required<DesktopPolicyValue>;
+}
+
+export function isRestrictedDesktopPolicyValue(
+  value: Required<DesktopPolicyValue>,
+): boolean {
+  return desktopPolicyDefinitions.every(
+    (definition) =>
+      definition.restrictedValue === null ||
+      value[definition.id] === definition.restrictedValue,
+  );
+}
+
+export const restrictedDesktopPolicyValue = applyRestrictedDesktopPolicy(
+  desktopPolicyDefaults,
+);
+
+// ---------------------------------------------------------------------------
+// Radix color families that can be used as a brand accent.
+// ---------------------------------------------------------------------------
+export const brandAccentColorValues = [
+  "blue",
+  "crimson",
+  "cyan",
+  "gold",
+  "grass",
+  "green",
+  "indigo",
+  "iris",
+  "jade",
+  "lime",
+  "mint",
+  "orange",
+  "pink",
+  "plum",
+  "purple",
+  "red",
+  "ruby",
+  "sky",
+  "teal",
+  "tomato",
+  "violet",
+  "yellow",
+] as const;
+
+export type BrandAccentColor = (typeof brandAccentColorValues)[number];
+
+export const desktopConfigSchema = desktopPolicyValueSchema
+  .extend({
+    allowedDesktopVersions: z
+      .array(z.string().trim().min(1).max(32))
+      .optional(),
+    brandAppName: z.string().trim().min(1).max(64).optional(),
+    brandLogoUrl: z.string().url().max(2048).optional(),
+    brandIconUrl: z.string().url().max(2048).optional(),
+    brandAccentColor: z.enum(brandAccentColorValues).optional(),
+    automationsEnabled: z.boolean().optional(),
+    dashboardEnabled: z.boolean().optional(),
+    connectEnabled: z.boolean().optional(),
+    onboardingPrompts: onboardingPromptsSchema.optional(),
+    onboardingPromptDescriptions: onboardingPromptDescriptionsSchema.optional(),
+  })
+  .meta({ ref: "DenDesktopConfig" });
+
+export type DesktopConfig = z.infer<typeof desktopConfigSchema>;
+
+function normalizeDesktopVersionString(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/^v/i, "");
+  return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(
+    normalized,
+  )
+    ? normalized
+    : null;
+}
+
+function normalizeAllowedDesktopVersions(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  return [
+    ...new Set(
+      value
+        .map((entry) => normalizeDesktopVersionString(entry))
+        .filter((entry): entry is string => Boolean(entry)),
+    ),
+  ];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/** JSON columns arrive as strings on engines like MariaDB (JSON = LONGTEXT alias). */
+function coerceJsonRecord(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+export function normalizeOnboardingPrompts(value: unknown): string[] | undefined {
+  const parsed = onboardingPromptsSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+export function normalizeOnboardingPromptDescriptions(
+  value: unknown,
+  promptCount?: number,
+): string[] | undefined {
+  const parsed = onboardingPromptDescriptionsSchema.safeParse(value);
+  if (!parsed.success) return undefined;
+  if (promptCount !== undefined && parsed.data.length !== promptCount) {
+    return undefined;
+  }
+  return parsed.data.some((description) => description.length > 0)
+    ? parsed.data
+    : undefined;
+}
+
+export function normalizeOnboardingPromptConfig(
+  value: unknown,
+): OnboardingPromptConfig | undefined {
+  const coerced = coerceJsonRecord(value);
+  const raw = isRecord(coerced) ? coerced : null;
+  const onboardingPrompts = normalizeOnboardingPrompts(raw?.onboardingPrompts);
+  if (onboardingPrompts === undefined) return undefined;
+
+  const onboardingPromptDescriptions = normalizeOnboardingPromptDescriptions(
+    raw?.onboardingPromptDescriptions,
+    onboardingPrompts.length,
+  );
+
+  return {
+    onboardingPrompts,
+    ...(onboardingPromptDescriptions !== undefined
+      ? { onboardingPromptDescriptions }
+      : {}),
+  };
+}
+
+export function normalizeDesktopPolicyValue(
+  value: unknown,
+): DesktopPolicyValue {
+  const parsed = desktopPolicyValueSchema.safeParse(coerceJsonRecord(value));
+  if (parsed.success) {
+    return Object.fromEntries(
+      desktopPolicyKeys.flatMap((key) =>
+        typeof parsed.data[key] === "boolean"
+          ? [[key, parsed.data[key]] as const]
+          : [],
+      ),
+    ) as DesktopPolicyValue;
+  }
+
+  return {};
+}
+
+export function normalizeDefaultDesktopPolicyValue(
+  value: unknown,
+): Required<DesktopPolicyValue> {
+  const normalized = normalizeDesktopPolicyValue(value);
+  return Object.fromEntries(
+    desktopPolicyDefinitions.map((definition) => [
+      definition.id,
+      normalized[definition.id] ?? definition.defaultValue,
+    ]),
+  ) as Required<DesktopPolicyValue>;
+}
+
+export function normalizeDesktopPolicyDocument(
+  value: unknown,
+): DesktopPolicyDocument {
+  const coerced = coerceJsonRecord(value);
+  const policy = normalizeDesktopPolicyValue(coerced);
+  const onboardingPromptConfig = normalizeOnboardingPromptConfig(coerced);
+
+  const access = normalizeTeamAccess(coerced);
+  return {
+    ...policy,
+    ...(access !== undefined ? { access } : {}),
+    ...(onboardingPromptConfig !== undefined ? onboardingPromptConfig : {}),
+  };
+}
+
+export function normalizeDesktopPolicyDocumentWrite(
+  value: unknown,
+): DesktopPolicyDocumentWrite {
+  const coerced = coerceJsonRecord(value);
+  const policy = normalizeDesktopPolicyValue(coerced);
+  const raw = isRecord(coerced) ? coerced : null;
+  const rawPrompts = raw?.onboardingPrompts;
+  const rawDescriptions = raw?.onboardingPromptDescriptions;
+  const onboardingPrompts = normalizeOnboardingPrompts(rawPrompts);
+  const onboardingPromptDescriptions = normalizeOnboardingPromptDescriptions(
+    rawDescriptions,
+    onboardingPrompts?.length,
+  );
+
+  const access = normalizeTeamAccess(coerced);
+  return {
+    ...policy,
+    ...(access !== undefined ? { access } : {}),
+    ...(rawPrompts === null
+      ? { onboardingPrompts: null, onboardingPromptDescriptions: null }
+      : onboardingPrompts !== undefined
+        ? { onboardingPrompts }
+        : {}),
+    ...(rawPrompts !== null && rawDescriptions === null
+      ? { onboardingPromptDescriptions: null }
+      : onboardingPromptDescriptions !== undefined
+        ? { onboardingPromptDescriptions }
+        : {}),
+  };
+}
+
+export function resolveDesktopPolicyDocumentWrite(input: {
+  value: unknown;
+  existingPolicy?: unknown;
+  isDefault?: boolean;
+  preserveExistingOnboardingPrompts?: boolean;
+}): DesktopPolicyDocument {
+  const write = normalizeDesktopPolicyDocumentWrite(input.value);
+  const policy = input.isDefault === true
+    ? normalizeDefaultDesktopPolicyValue(write)
+    : normalizeDesktopPolicyValue(write);
+  const existingDocument = input.preserveExistingOnboardingPrompts === true
+    ? normalizeDesktopPolicyDocument(input.existingPolicy ?? {})
+    : undefined;
+  const onboardingPrompts = Array.isArray(write.onboardingPrompts)
+    ? write.onboardingPrompts
+    : write.onboardingPrompts === undefined &&
+        input.preserveExistingOnboardingPrompts === true
+      ? existingDocument?.onboardingPrompts
+      : undefined;
+  const onboardingPromptDescriptions = onboardingPrompts === undefined
+    ? undefined
+    : Array.isArray(write.onboardingPromptDescriptions)
+      ? normalizeOnboardingPromptDescriptions(
+          write.onboardingPromptDescriptions,
+          onboardingPrompts.length,
+        )
+      : write.onboardingPromptDescriptions === undefined &&
+          write.onboardingPrompts === undefined &&
+          input.preserveExistingOnboardingPrompts === true
+        ? normalizeOnboardingPromptDescriptions(
+            existingDocument?.onboardingPromptDescriptions,
+            onboardingPrompts.length,
+          )
+        : undefined;
+
+  const access = write.access ?? normalizeTeamAccess(input.existingPolicy);
+  return {
+    ...policy,
+    ...(access !== undefined ? { access } : {}),
+    ...(onboardingPrompts !== undefined ? { onboardingPrompts } : {}),
+    ...(onboardingPromptDescriptions !== undefined
+      ? { onboardingPromptDescriptions }
+      : {}),
+  };
+}
+
+export function normalizeDefaultDesktopPolicyDocument(
+  value: unknown,
+): DefaultDesktopPolicyDocument {
+  const coerced = coerceJsonRecord(value);
+  const policy = normalizeDefaultDesktopPolicyValue(coerced);
+  const onboardingPromptConfig = normalizeOnboardingPromptConfig(coerced);
+
+  const access = normalizeTeamAccess(coerced);
+  return {
+    ...policy,
+    ...(access !== undefined ? { access } : {}),
+    ...(onboardingPromptConfig !== undefined ? onboardingPromptConfig : {}),
+  };
+}
+
+export function allDesktopPolicies(
+  value: boolean,
+): Required<DesktopPolicyValue> {
+  return Object.fromEntries(
+    desktopPolicyDefinitions.map((definition) => [definition.id, value]),
+  ) as Required<DesktopPolicyValue>;
+}
+
+export function calculateEffectiveDesktopPolicy(input: {
+  orgPolicyCount: number;
+  defaultPolicy?: unknown;
+  assignedPolicies: unknown[];
+}): Required<DesktopPolicyValue> {
+  if (input.orgPolicyCount === 0) {
+    return allDesktopPolicies(true);
+  }
+
+  const calculated = allDesktopPolicies(false);
+  const policies = [
+    normalizeDefaultDesktopPolicyValue(input.defaultPolicy ?? {}),
+    ...input.assignedPolicies.map((policy) =>
+      normalizeDesktopPolicyValue(policy),
+    ),
+  ];
+
+  for (const policy of policies) {
+    for (const key of desktopPolicyKeys) {
+      if (policy[key] === true) {
+        calculated[key] = true;
+      }
+    }
+  }
+
+  for (const document of [input.defaultPolicy, ...input.assignedPolicies]) {
+    const access = normalizeTeamAccess(document);
+    if (!access) continue;
+    for (const definition of desktopPolicyDefinitions) {
+      if (definition.restrictedValue === null) continue;
+      if (access.mode === "locked" || access.capabilities[definition.id] === false) {
+        calculated[definition.id] = false;
+      }
+    }
+  }
+
+  return calculated;
+}
+
+export type DesktopPolicyPromptCandidate = {
+  id: string;
+  priority: number;
+  createdAt: Date | string | number | null;
+  policy: unknown;
+};
+
+function getCreatedAtTime(value: Date | string | number | null) {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  if (typeof value !== "string") return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function comparePromptCandidates(
+  left: DesktopPolicyPromptCandidate,
+  right: DesktopPolicyPromptCandidate,
+) {
+  if (left.priority !== right.priority) return right.priority - left.priority;
+
+  const leftCreatedAt = getCreatedAtTime(left.createdAt);
+  const rightCreatedAt = getCreatedAtTime(right.createdAt);
+  if (leftCreatedAt !== rightCreatedAt) return leftCreatedAt - rightCreatedAt;
+
+  return left.id.localeCompare(right.id);
+}
+
+export function selectEffectiveOnboardingPrompts(input: {
+  defaultPolicy?: unknown;
+  assignedPolicies: DesktopPolicyPromptCandidate[];
+}): string[] | undefined {
+  return selectEffectiveOnboardingPromptConfig(input)?.onboardingPrompts;
+}
+
+export function selectEffectiveOnboardingPromptConfig(input: {
+  defaultPolicy?: unknown;
+  assignedPolicies: DesktopPolicyPromptCandidate[];
+}): OnboardingPromptConfig | undefined {
+  const candidatesById = new Map<string, DesktopPolicyPromptCandidate>();
+  for (const candidate of input.assignedPolicies) {
+    if (!candidatesById.has(candidate.id)) {
+      candidatesById.set(candidate.id, candidate);
+    }
+  }
+
+  const targetedCandidates = [...candidatesById.values()]
+    .filter(
+      (candidate) =>
+        normalizeOnboardingPromptConfig(candidate.policy) !== undefined,
+    )
+    .sort(comparePromptCandidates);
+  const targetedConfig = targetedCandidates[0]
+    ? normalizeOnboardingPromptConfig(targetedCandidates[0].policy)
+    : undefined;
+
+  return (
+    targetedConfig ??
+    normalizeOnboardingPromptConfig(input.defaultPolicy ?? {})
+  );
+}
+
+function normalizeBrandUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  try {
+    new URL(trimmed);
+    return trimmed.slice(0, 2048);
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeBrandAppName(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, 64) : undefined;
+}
+
+function normalizeBrandAccentColor(value: unknown): BrandAccentColor | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim().toLowerCase();
+  return brandAccentColorValues.find((color) => color === trimmed);
+}
+
+export function normalizeDesktopConfig(value: unknown): DesktopConfig {
+  const policy = normalizeDesktopPolicyValue(value);
+  const raw = isRecord(value) ? value : null;
+  const allowedDesktopVersions = normalizeAllowedDesktopVersions(
+    raw?.allowedDesktopVersions,
+  );
+  const brandAppName = normalizeBrandAppName(raw?.brandAppName);
+  const brandLogoUrl = normalizeBrandUrl(raw?.brandLogoUrl);
+  const brandIconUrl = normalizeBrandUrl(raw?.brandIconUrl);
+  const brandAccentColor = normalizeBrandAccentColor(raw?.brandAccentColor);
+  const automationsEnabled =
+    typeof raw?.automationsEnabled === "boolean"
+      ? raw.automationsEnabled
+      : undefined;
+  const dashboardEnabled =
+    typeof raw?.dashboardEnabled === "boolean"
+      ? raw.dashboardEnabled
+      : undefined;
+  const connectEnabled =
+    typeof raw?.connectEnabled === "boolean" ? raw.connectEnabled : undefined;
+  const onboardingPromptConfig = normalizeOnboardingPromptConfig(raw);
+
+  return {
+    ...policy,
+    ...(allowedDesktopVersions !== undefined ? { allowedDesktopVersions } : {}),
+    ...(brandAppName !== undefined ? { brandAppName } : {}),
+    ...(brandLogoUrl !== undefined ? { brandLogoUrl } : {}),
+    ...(brandIconUrl !== undefined ? { brandIconUrl } : {}),
+    ...(brandAccentColor !== undefined ? { brandAccentColor } : {}),
+    ...(automationsEnabled !== undefined ? { automationsEnabled } : {}),
+    ...(dashboardEnabled !== undefined ? { dashboardEnabled } : {}),
+    ...(connectEnabled !== undefined ? { connectEnabled } : {}),
+    ...(onboardingPromptConfig !== undefined ? onboardingPromptConfig : {}),
+  };
+}
