@@ -1,0 +1,37 @@
+name: Import prompts.chat source
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-prompts-chat.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Clone fixed upstream revision
+        run: |
+          rm -rf prompts.chat/source
+          git clone --no-checkout https://github.com/f/prompts.chat.git /tmp/prompts-chat-upstream
+          git -C /tmp/prompts-chat-upstream checkout 2d2d410e31807107ed2075353a5d64fb4e1083fb
+          mkdir -p prompts.chat/source
+          cp -a /tmp/prompts-chat-upstream/. prompts.chat/source/
+          rm -rf prompts.chat/source/.git
+      - name: Commit imported source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prompts.chat/source
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: import prompts.chat upstream source"
+          git push
