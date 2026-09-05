@@ -62,3 +62,4 @@
 | [anthropics/knowledge-work-plugins](anthropics--knowledge-work-plugins/) | 23882 | 212 | `Apache-2.0` | `main` | [`1f517b9de47e`](https://github.com/anthropics/knowledge-work-plugins/commit/1f517b9de47e827c80cd933ed364e16838072239) |
 | [can1357/oh-my-pi](can1357--oh-my-pi/) | 29540 | 15 | `MIT` | `main` | [`5964a0f76492`](https://github.com/can1357/oh-my-pi/commit/5964a0f7649275bcde818f20073193fd032451f2) |
 | [Egonex-AI/Understand-Anything](Egonex-AI--Understand-Anything/) | 81512 | 9 | `MIT` | `main` | [`787da45adbf1`](https://github.com/Egonex-AI/Understand-Anything/commit/787da45adbf18aab5c3e3e531b0374dd576f263c) |
+| [Hmbown/Codewhale](Hmbown--Codewhale/) | 40915 | 47 | `MIT` | `main` | [`c042ea2de135`](https://github.com/Hmbown/Codewhale/commit/c042ea2de13512ef88a10c142061307d840f2478) |
