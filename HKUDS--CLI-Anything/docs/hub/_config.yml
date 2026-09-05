@@ -1,0 +1,23 @@
+include:
+  - .well-known
+  - robots.txt
+  - sitemap.xml
+  - llms.txt
+  - llms-full.txt
+  - index.md
+  - pricing.md
+  - openapi.json
+
+# Static files to copy without processing.
+exclude: []
+
+# Keep markdown files as-is
+markdown: kramdown
+kramdown:
+  input: GFM
+
+defaults:
+  - scope:
+      path: ".well-known"
+    values:
+      layout: none
