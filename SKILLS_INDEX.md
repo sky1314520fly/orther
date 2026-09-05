@@ -51,3 +51,4 @@
 | [code-yeongyu/oh-my-openagent](code-yeongyu--oh-my-openagent/) | 68703 | 64 | `NOASSERTION` | `dev` | [`18e514f0ff5a`](https://github.com/code-yeongyu/oh-my-openagent/commit/18e514f0ff5a79fb9efe28e6204777b05b151d45) |
 | [davila7/claude-code-templates](davila7--claude-code-templates/) | 30533 | 898 | `MIT` | `main` | [`816d2f44046c`](https://github.com/davila7/claude-code-templates/commit/816d2f44046c56fa6eb5d1cf0e0bfab964397aae) |
 | [garrytan/gbrain](garrytan--gbrain/) | 29600 | 223 | `MIT` | `master` | [`8c70f6255047`](https://github.com/garrytan/gbrain/commit/8c70f6255047a7647adb30b1d6333a48068d9fa5) |
+| [garrytan/gstack](garrytan--gstack/) | 131399 | 61 | `MIT` | `main` | [`0d1bd5616c0e`](https://github.com/garrytan/gstack/commit/0d1bd5616c0ef096bb7ccee336f63c60ee408618) |
