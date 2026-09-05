@@ -68,3 +68,4 @@
 | [HKUDS/CLI-Anything](HKUDS--CLI-Anything/) | 48997 | 151 | `Apache-2.0` | `main` | [`810c18b0d1ab`](https://github.com/HKUDS/CLI-Anything/commit/810c18b0d1ab9b234bc996c9fd999318523a3ef0) |
 | [openai/symphony](openai--symphony/) | 27039 | 7 | `Apache-2.0` | `main` | [`8001b52e3062`](https://github.com/openai/symphony/commit/8001b52e3062495a16e520e4ceaf8f9de868c4d0) |
 | [simstudioai/sim](simstudioai--sim/) | 29544 | 42 | `Apache-2.0` | `main` | [`7945b2957f5c`](https://github.com/simstudioai/sim/commit/7945b2957f5c8f851a8dd8b0f2a2e3f9449a1696) |
+| [topoteretes/cognee](topoteretes--cognee/) | 30476 | 10 | `Apache-2.0` | `main` | [`20e0bd88746d`](https://github.com/topoteretes/cognee/commit/20e0bd88746de2d96e99b4b122361dfc3dad21bc) |
