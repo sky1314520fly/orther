@@ -54,3 +54,4 @@
 | [garrytan/gstack](garrytan--gstack/) | 131399 | 61 | `MIT` | `main` | [`0d1bd5616c0e`](https://github.com/garrytan/gstack/commit/0d1bd5616c0ef096bb7ccee336f63c60ee408618) |
 | [google-labs-code/design.md](google-labs-code--design.md/) | 27737 | 4 | `Apache-2.0` | `main` | [`9bf8eae67128`](https://github.com/google-labs-code/design.md/commit/9bf8eae67128b6cc55ad9bf86665767deb4c11cd) |
 | [luongnv89/claude-howto](luongnv89--claude-howto/) | 41356 | 31 | `MIT` | `main` | [`1e16914a8de8`](https://github.com/luongnv89/claude-howto/commit/1e16914a8de857d097e66d7ef15683e52955e596) |
+| [nexu-io/open-design](nexu-io--open-design/) | 94126 | 536 | `Apache-2.0` | `main` | [`50e305dff2b6`](https://github.com/nexu-io/open-design/commit/50e305dff2b64d9dc0220e5dfa5d8c98ba4364e3) |
