@@ -49,3 +49,4 @@
 | [SuperClaude-Org/SuperClaude_Framework](SuperClaude-Org--SuperClaude_Framework/) | 23870 | 9 | `MIT` | `master` | [`1b81e51db955`](https://github.com/SuperClaude-Org/SuperClaude_Framework/commit/1b81e51db955126ec8983769b96dec575d730c05) |
 | [Yeachan-Heo/oh-my-claudecode](Yeachan-Heo--oh-my-claudecode/) | 39015 | 35 | `MIT` | `main` | [`aaf388290609`](https://github.com/Yeachan-Heo/oh-my-claudecode/commit/aaf38829060979006d37018c1648fe17b7b9918e) |
 | [code-yeongyu/oh-my-openagent](code-yeongyu--oh-my-openagent/) | 68703 | 64 | `NOASSERTION` | `dev` | [`18e514f0ff5a`](https://github.com/code-yeongyu/oh-my-openagent/commit/18e514f0ff5a79fb9efe28e6204777b05b151d45) |
+| [davila7/claude-code-templates](davila7--claude-code-templates/) | 30533 | 898 | `MIT` | `main` | [`816d2f44046c`](https://github.com/davila7/claude-code-templates/commit/816d2f44046c56fa6eb5d1cf0e0bfab964397aae) |
