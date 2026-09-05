@@ -1,0 +1,56 @@
+{
+  "name": "planning-with-files",
+  "version": "3.16.0",
+  "description": "Persistent project planning with selected context injection. Automatic recovery uses project files only; explicit catchup modes read same-project local session records for aggregate counts or bounded replay. The host-aware gate never runs Markdown-declared commands. No network upload path. Ships the skill plus a Pi Coding Agent extension.",
+  "keywords": [
+    "pi-package",
+    "pi-skill",
+    "planning",
+    "manus",
+    "agent",
+    "agent-skills",
+    "claude-code",
+    "claude-skills",
+    "coding-agent",
+    "context-engineering",
+    "session-recovery",
+    "long-running-agents"
+  ],
+  "pi": {
+    "skills": [
+      "SKILL.md"
+    ],
+    "extensions": [
+      "extensions/planning-with-files/index.ts"
+    ]
+  },
+  "scripts": {
+    "prepack": "node scripts/verify-shell-line-endings.mjs"
+  },
+  "files": [
+    "README.md",
+    "SKILL.md",
+    "examples.md",
+    "reference.md",
+    "scripts/",
+    "templates/",
+    "extensions/",
+    "!**/node_modules",
+    "!**/__pycache__",
+    "!**/*.pyc",
+    "!extensions/planning-with-files/package-lock.json"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OthmanAdi/planning-with-files.git"
+  },
+  "author": "Ahmad Othman Ammar Adi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/OthmanAdi/planning-with-files/issues"
+  },
+  "homepage": "https://github.com/OthmanAdi/planning-with-files#readme"
+}
