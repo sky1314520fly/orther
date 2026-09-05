@@ -45,3 +45,4 @@
 | [zhaoxuya520/reverse-skill](zhaoxuya520--reverse-skill/) | 34580 | 89 | `MIT` | `main` | [`7e2097fd90d2`](https://github.com/zhaoxuya520/reverse-skill/commit/7e2097fd90d25c2f976f6eba26d6c00aa88051df) |
 | [github/spec-kit](github--spec-kit/) | 133521 | 1 | `MIT` | `main` | [`4a7341a93d94`](https://github.com/github/spec-kit/commit/4a7341a93d944d6efe153b71da4a1adb9c2b578c) |
 | [EveryInc/compound-engineering-plugin](EveryInc--compound-engineering-plugin/) | 24847 | 40 | `MIT` | `main` | [`57e409e5c8c2`](https://github.com/EveryInc/compound-engineering-plugin/commit/57e409e5c8c2c472106bd7d87ac72b724b70826b) |
+| [Fission-AI/OpenSpec](Fission-AI--OpenSpec/) | 67330 | 16 | `MIT` | `main` | [`e062b9572be9`](https://github.com/Fission-AI/OpenSpec/commit/e062b9572be933564ba3899d059377dfa1393e32) |
