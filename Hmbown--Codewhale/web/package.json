@@ -1,0 +1,56 @@
+{
+  "name": "codewhale-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Community site for Codewhale — codewhale.net",
+  "scripts": {
+    "dev": "node scripts/derive-facts.mjs && node scripts/derive-changelog.mjs && next dev",
+    "prebuild": "node scripts/derive-facts.mjs && node scripts/derive-changelog.mjs",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "check:facts": "node scripts/check-facts.mjs",
+    "sync:latest-release": "node scripts/sync-latest-release.mjs",
+    "check:latest-release": "node scripts/sync-latest-release.mjs --check",
+    "check:docs": "node scripts/check-docs.mjs",
+    "check:tokens": "python3 ../scripts/export-design-tokens.py --check",
+    "check:locales": "node scripts/check-locales.mjs && node scripts/gt-site.mjs check",
+    "i18n:gt": "node scripts/gt-site.mjs",
+    "check:deploy-env": "node scripts/check-cloudflare-deploy-env.mjs",
+    "compare:deployed-facts": "node scripts/compare-deployed-facts.mjs",
+    "check:deployed-facts": "node scripts/compare-deployed-facts.mjs --require-current",
+    "lint": "eslint .",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "predeploy": "node scripts/check-kv-id.mjs",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "next": "^16.3.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.4",
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.2.5",
+    "autoprefixer": "^10.5.4",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^15.5.18",
+    "gt": "2.17.2",
+    "postcss": "^8.5.18",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.9",
+    "wrangler": "^4.107.0"
+  },
+  "overrides": {
+    "esbuild": "0.28.1",
+    "nanoid": "^3.3.17",
+    "postcss": "^8.5.18",
+    "sharp": "0.35.3",
+    "ws": "8.21.0",
+    "undici": "7.29.0"
+  }
+}

@@ -1,0 +1,43 @@
+# Fleet roles: stopship
+#
+# Named stopship fleet binding workflow roles → Fleet roles. Spawns resolve
+# roles only — there are no saved members to bind, and Fleet does NOT spawn
+# tmux or manage worktrees (Runtime owns those).
+#
+# Load path (when wired by workflow run --fleet):
+#   1. $CODEWHALE_HOME/fleets/stopship.toml
+#   2. <workspace>/fleets/stopship.toml  (this file)
+#
+# Values use the canonical Codewhale role vocabulary (explore, implement,
+# reviewer, test, advisor); keys are the workflow's own step names.
+
+name = "stopship"
+description = "Read-only current release orchestration acceptance fleet"
+
+[roles]
+# workflow role name = Fleet role (canonical or legacy alias)
+explore = "scout"
+implement = "builder"
+reviewer = "reviewer"
+test = "verifier"
+release_lead = "advisor"
+
+[role_intents.explore]
+mode = "read_only"
+summary = "Source-level runtime and receipt reconnaissance"
+
+[role_intents.implement]
+mode = "read_only"
+summary = "No-edit acceptance evidence plan"
+
+[role_intents.reviewer]
+mode = "read_only"
+summary = "False-green and receipt-contract review"
+
+[role_intents.test]
+mode = "read_only"
+summary = "Static test and receipt serialization verification"
+
+[role_intents.release_lead]
+mode = "read_only"
+summary = "Final evidence-only acceptance receipt"

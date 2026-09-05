@@ -1,0 +1,33 @@
+{
+  "name": "CodeWhale",
+  "build": {
+    "context": "..",
+    "dockerfile": "Dockerfile",
+    "args": {
+      "RUST_VERSION": "1.88"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb"
+      ],
+      "settings": {
+        "rust-analyzer.cargo.features": "all",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "remoteEnv": {
+    "DEEPSEEK_API_KEY": "${localEnv:DEEPSEEK_API_KEY}",
+    "CARGO_TARGET_DIR": "/home/codewhale/.cargo/target"
+  },
+  "mounts": [
+    "source=codewhale-state,target=/home/codewhale/.codewhale,type=volume",
+    "source=codewhale-cargo-target,target=/home/codewhale/.cargo/target,type=volume"
+  ],
+  "postCreateCommand": "cargo build --locked",
+  "remoteUser": "codewhale"
+}

@@ -1,0 +1,49 @@
+ARCHIVED REFERENCE — removed portrait artwork, not the current Codewhale mark.
+The canonical mark is a raster asset with no approved ASCII or block-glyph
+substitute; the terminal startup intentionally uses direct copy instead.
+
+Former Codewhale empty-state whale portrait — CURRENT (main) vs NEW (Signal Cut)
+
+== classic ==
+
+  BEFORE
+       ˚
+      ▗▄▄▄▄▄▄▄▄▄▄▄▖      ▚△▞
+     ▐██·███████████▙━━━━▞
+      ▝▀▀▀▀▀▀▀▀▀▀▀▀▘
+
+  AFTER
+        ˚
+      ▗▄▄▟▄▄▄▄▄▖  ▚△▞
+     ▐█·████████▙▄▄▞
+      ▝▀▀▀▀▀▀▀▀▘
+
+  AFTER, CODEWHALE_ASCII_SAFE=1
+        o
+      .########.  \^/
+     |#.###########/
+      .########.
+
+  block width: 24 -> 17 columns
+
+== uwu ==
+
+  BEFORE
+       ˚✦
+     ▗▄▄▄▄▄▄▄▄▄▄▄▖    ▚△▞
+    ▐█░·░█████████▙▄▄▞
+     ▝▀▀▀▀▀▀▀▀▀▀▀▘
+
+  AFTER
+        ˚✦
+      ▗▄▄▟▄▄▄▄▖  ▚△▞
+     ▐█░·░█████▙▄▄▞
+      ▝▀▀▀▀▀▀▀▘
+
+  AFTER, CODEWHALE_ASCII_SAFE=1
+        o*
+      .#######.  \^/
+     |#:.:########/
+      .#######.
+
+  block width: 21 -> 16 columns
