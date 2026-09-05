@@ -1,0 +1,635 @@
+# 🛠️ Repository Maintenance Guide (V5)
+
+> **"If it's not documented, it's broken."**
+
+This guide details the exact procedures for maintaining `agentic-awesome-skills`.
+It covers the **Quality Bar**, **Documentation Consistency**, and **Release Workflows**.
+
+**Maintainer shortcuts:** [Merge a PR](#b-when-you-merge-a-pr-step-by-step) · [Reopen & merge a closed PR](#if-a-pr-was-closed-after-local-integration-reopen-and-merge) · [Post-batch credits verification](#c-post-batch-credits-verification) · [Close issues](#when-to-close-an-issue) · [Create a release](#4-release-workflow)
+
+---
+
+## 0. 🤖 Agent Protocol (THE BIBLE)
+
+**AGENTS MUST READ AND FOLLOW THIS SECTION BEFORE MARKING ANY TASK AS COMPLETE.**
+
+### Current-base instruction guard
+
+After establishing the clean task base, re-read `AGENTS.md`, this guide, the repository-canonical maintainer skill, and `package.json` from that exact base. Do not rely on repository instructions inherited from a different checkout.
+
+Every command, script, reviewer, or gate described as mandatory must exist on the current task base. If it does not, never import or run the retired implementation from another branch, worktree, stash, installed copy, or historical commit. Compare with `origin/main`, inspect the removal history, and use the current-base contract; stop and report only if the conflict cannot be resolved from repository history.
+
+There are 5 things that usually fail/get forgotten. **DO NOT FORGET THEM:**
+
+### 1. 📤 ALWAYS PUSH (Non-Negotiable)
+
+Committing is NOT enough. You must PUSH to the remote.
+
+- **BAD**: `git commit -m "feat: new skill"` (User sees nothing)
+- **GOOD**: `git commit -m "..." && git push -u origin <topic-branch>` followed by a protected pull request
+
+### 2. 🔄 SYNC GENERATED FILES (Avoid CI Drift)
+
+If you touch **any of these**:
+
+- `skills/` (add/remove/modify skills)
+- the **Full Skill Registry** section of `README.md`
+- **counts/claims** about the number of skills (`1,200+ Agentic Skills...`, `(1,200+/1,200+)`, etc.)
+
+…then you **MUST** run the Validation Chain **BEFORE** committing.
+
+- Running `npm run chain` is **NOT optional**.
+- `npm run chain` already includes catalog generation; do not invoke `npm run catalog` again immediately afterward.
+
+For contributor PRs, the contract is now **source-only**:
+
+- contributors should not commit `CATALOG.md`, `skills_index.json`, or `data/*.json`
+- PR CI previews generated drift but does not require those files in the branch
+- `main` remains the only canonical owner of derived registry artifacts
+
+If `main` CI fails with:
+
+> `❌ Detected uncommitted changes produced by registry/readme/catalog scripts.`
+
+it means the repository could not auto-sync generated artifacts cleanly and maintainer intervention is required.
+
+### 3. 📝 EVIDENCE OF WORK
+
+- You must create/update `walkthrough.md` or `CHANGELOG.md` to document what changed.
+- If you made something new, **link it** in the artifacts.
+
+### 4. 🛡️ PROTECTED MAIN
+
+- **Never commit or push directly to `main`.** Branch protection applies to maintainers and administrators.
+- Make maintainer repairs on the contributor branch when allowed, or on a `codex/*`, `fix/*`, or release branch and open a pull request.
+- Merge accepted source PRs with `npm run merge:batch`; generated state follows through the protected `automation/canonical-repo-state` PR.
+- A request phrased as “push to main” names the final target state, not permission to bypass the protected PR lane.
+
+### 5. 📦 RUNTIME DEPENDENCIES MUST BE RUNTIME DEPENDENCIES
+
+If you change the published npm installer surface:
+
+- `tools/bin/install.js`
+- `tools/lib/**/*.js` used by the installer
+- `package.json` `bin` entry or packaged files
+
+…then every imported package needed by `npx agentic-awesome-skills` must live in `dependencies`, **not** `devDependencies`.
+
+- `npm pack --dry-run` is **not enough** to prove this.
+- A local repo test can pass while `npx` still fails in a clean environment.
+- If installer/runtime imports change, add or update a package-contents/runtime test in `tools/scripts/tests/`.
+- Treat `Cannot find module 'X'` from a clean `npx` install as a release-blocking packaging failure.
+
+---
+
+## 1. 🚦 Daily Maintenance Routine
+
+### A. Validation Chain
+
+Before ANY commit that adds/modifies skills, run the chain:
+
+1.  **Validate, index, and update readme**:
+
+    ```bash
+    npm run chain
+    ```
+
+    _Must return 0 errors for new skills._
+
+2.  **Enforce the frozen warning budget**:
+
+    ```bash
+    npm run check:warning-budget
+    ```
+
+    This is required before merging or releasing skill changes. It catches new repository-wide warnings, including missing `## When to Use` sections, at PR time instead of letting them surface only during `release:preflight`.
+
+3.  **Check README source credits for changed skills**:
+
+    ```bash
+    npm run check:readme-credits -- --base origin/main --head HEAD
+    ```
+
+    This verifies that changed skills with declared external upstream repos already have the required README credit under `### Official Sources` or `### Community Contributors`.
+    The first rollout is warning-first for missing structured metadata: if a changed skill clearly looks externally sourced but still lacks `source_repo`, the check warns instead of failing. Once `source_repo` is declared, README coverage is mandatory.
+
+4.  **Optional maintainer sweep shortcut**:
+    ```bash
+    npm run sync:repo-state
+    ```
+    This wraps `chain + sync:web-assets + sync:contributors + audit:consistency` for a full local repo-state refresh; `chain` already generates the catalog.
+    The scheduled GitHub Actions workflow `Repo Hygiene` runs this same sweep weekly to catch slow drift on `main`.
+    It also enforces the frozen validation warning budget, so new warnings do not creep in silently while the legacy `135` known warnings remain accepted.
+
+    When you need the live GitHub repo metadata updated too, run:
+
+    ```bash
+    npm run sync:github-about
+    npm run audit:consistency:github
+    ```
+    For a read-only summary of current repo health, run:
+    ```bash
+    npm run audit:maintainer
+    ```
+    Risk labels are declared metadata. Validate the declared value and review ambiguous `risk: unknown` cases semantically; do not infer or rewrite risk from isolated words.
+
+5.  **PROVE GENERATED STATE, BUT KEEP SOURCE PRS SOURCE-ONLY**:
+    ```bash
+    npm run chain
+    git status --short
+    ```
+    > 🔴 **CRITICAL for maintainer pull requests**: Inspect the generated delta as validation, then exclude derived registries, plugin mirrors, marketplaces, and other generated outputs from the source PR. The protected `automation/canonical-repo-state` PR owns that state after source merge.
+    > The only exception is the exact set intentionally staged by the scripted `release:prepare` flow in its protected release PR. Never hand-stage generated state in an ordinary maintainer or contributor PR.
+    > See [`docs/maintainers/ci-drift-fix.md`](../docs/maintainers/ci-drift-fix.md) for details.
+    > Protected `main` never receives an automatic direct push. Canonical drift is published through the fixed `automation/canonical-repo-state` PR only when it stays inside the generated-files contract; unmanaged drift fails closed.
+
+### B. When You Merge a PR (Step-by-Step)
+
+> **Agent instruction (when analyzing or handling PRs):** Always merge accepted PRs with the guarded `npm run merge:batch` command, which performs GitHub's protected squash merge. Never integrate locally and then close the PR. If a PR was historically closed after local integration, reopen and repair it before using the guarded command so it ends up **Merged**. Contributors must get credit.
+
+**Before merging:**
+
+### Skill-content review gate
+
+For every canonical `SKILL.md` or tracked bundle-file change, run validation, reference validation, documentation security, changed-skill evidence, and relevant tests. Review semantics, provenance, declared risk, limitations, and bundled files directly. The separate `skill-review` workflow or an exact-head maintainer attestation remains authoritative; local heuristic scores and inferred risk labels are not merge gates.
+
+Changed-skill evidence resolves canonical ownership from the changed path's ancestors rather than scanning the complete skill registry for every Git record. Keep this lookup bounded and preserve the five-minute trusted evaluator budget so repository-wide maintenance batches can complete without weakening fail-closed evidence checks. Legacy canonical `SKILL.md` blobs with executable mode are parsed only as private, non-executable snapshot data; they remain reported as unsafe entries, while symlinks, gitlinks, and every other executable file remain unmaterialized.
+
+1.  **CI is green** — Validation, warning-budget enforcement, README source-credit checks, reference checks, tests, and generated artifact steps passed (see [`.github/workflows/ci.yml`](workflows/ci.yml)). If the PR changes anything under `skills/**` or `plugins/**/skills/**`, the separate [`skill-review` workflow](workflows/skill-review.yml) must also report a truthful outcome.
+2.  **Generated drift understood** — On pull requests, generator drift is informational only. Do not block a good PR solely because canonical artifacts would be regenerated. Also do not accept PRs that directly edit `CATALOG.md`, `skills_index.json`, or `data/*.json`; those files are `main`-owned.
+3.  **Quality Bar** — PR description confirms the [Quality Bar Checklist](.github/PULL_REQUEST_TEMPLATE.md) (metadata, risk label, credits if applicable).
+4.  **Issue link** — If the PR fixes an issue, the PR description should contain `Closes #N` or `Fixes #N` so GitHub auto-closes the issue on merge.
+
+**Required-CI execution contract:**
+
+- Source-only classification counts the destination of a Git copy as changed; its unchanged origin is not a generated-file mutation. Renames still count both paths. Raw records, blob safety, fork classification and exact-head review remain enforced independently.
+
+- `pr-policy` executes the fork-safety intake with code and dependencies materialized from the exact protected base before the dependent required jobs start. The classifier's `NODE_PATH` must point only at that protected-base worktree, never at pull-request-controlled `node_modules`. This is an early, unprivileged rejection of unsafe fork diffs; `merge:batch` still recomputes the trusted decision and remains the only fork-run approval and merge authority.
+- The reported `impact_profile` is shadow telemetry only. It does not skip, downgrade, or satisfy any required check.
+- For an ordinary source PR, `source-validation` performs the generated-state refresh once and publishes a manifest bound to the exact repository, workflow/run attempt, and PR head SHA. `artifact-preview` verifies that manifest and its digest; it does not regenerate the same source-PR tree.
+- For the protected canonical-sync PR, `pr-policy` reproduces the exact tree from trusted `main`, `source-validation` records a lightweight boundary, and `artifact-preview` confirms that regeneration leaves no drift. The merged commit still receives the explicit final `main` CI and CodeQL runs.
+- The test runner emits timing telemetry for measurement. Deterministic sharding is an explicit local opt-in through `npm run test:local -- --shard-index N --shard-count M`; required CI continues to run the complete unsharded `npm run test` gate.
+
+**How you merge:**
+
+- **Always merge with `npm run merge:batch`**, which uses GitHub's immediate squash-merge endpoint so the PR shows as **Merged** and the contributor gets credit. Do **not** integrate locally, use a raw merge command, or close the PR after copying its changes.
+- **If the PR has merge conflicts:** Resolve them **on the PR branch** (you or the contributor: merge `main` into the PR branch, fix conflicts, drop derived registry files from the branch if they appear, push). For generated registry files, prefer keeping `main`'s side rather than hand-editing conflicts. Then use `merge:batch`. Full steps: [docs/maintainers/merging-prs.md](../docs/maintainers/merging-prs.md).
+- There is no direct-`main` or local-integration exception. If the guarded merge path cannot complete, stop and repair the PR or the protected workflow.
+
+**If CI is blocked on fork approval or stale PR metadata:**
+
+This happens regularly on community PRs from forks. The common symptoms are:
+
+- `gh pr checks` shows `no checks reported` even though Actions runs exist.
+- `gh run list` shows `action_required` with `jobs: []` for `Skills Registry CI` or `Skill Review`.
+- the PR body does not include the optional Quality Bar Checklist.
+
+Use this playbook:
+
+1.  **Use the guarded maintainer command, never a raw run-approval API call.** It recomputes the complete base-to-head diff from exact Git objects, rejects unsafe paths/modes/types, validates workflow identity and PR metadata, and checks the head SHA again around approval:
+    ```bash
+    npm run merge:batch -- --prs <PR_NUMBER> --dry-run
+    ```
+    If any tracked file under a canonical `skills/<skill-id>/**` subtree changed, review the entire subtree and the exact full head SHA shown by the command, then supply it to the real run:
+    ```bash
+    npm run merge:batch -- --prs <PR_NUMBER> --reviewed-head <40-character-head-sha>
+    ```
+2.  **Treat the checklist as guidance, not evidence.** A missing checklist emits a notice; objective path, blob, validation, reference, provenance, security, test, and exact-head review gates determine mergeability.
+3.  **Let `merge:batch` approve action-required fork runs.** GitHub Actions materializes those runs asynchronously, so an empty first lookup is not evidence that approval is unnecessary. Do not approve them directly by run ID; the command binds every approval to the current PR, exact head SHA, allowlisted workflow, locally recomputed diff, and immutable PR tuple.
+4.  **Wait for the required checks.** Merge only after `pr-policy`, `pr-evidence`, `source-validation`, `artifact-preview`, and a truthful skill-review outcome for any change under `skills/**` or `plugins/**/skills/**`. `review` means Tessl semantic review actually passed or reused a successful result for the identical complete skill-directory fingerprint. `manual-review-required` means credentials or credits were unavailable, or Tessl did not produce a passing result; it requires the exact-SHA maintainer judgment above. Never describe `manual-review-required` as “Tessl passed,” and never rerun Tessl merely because the PR head or base moved when the complete changed skill content is identical.
+    Tessl execution is bounded to ten minutes. A timeout is a non-passing result and must route to `manual-review-required`; it is never evidence that semantic review passed.
+5.  **If the merge endpoint says `Base branch was modified`**, stop that invocation, discard its stale evidence, refresh the checkout to the current `origin/main`, and rerun `merge:batch`. The command does not retry base drift automatically.
+
+`merge:batch` evaluates the PR as it exists. It does not rewrite or normalize the PR body, and it does not close or reopen the PR to manufacture replacement workflow runs. The reopen procedure below is only for repairing a PR that was historically closed after unsupported local integration.
+
+**If a PR was closed after local integration (reopen and merge):**
+
+If a PR was integrated via local squash and then **closed** (so it shows "Closed" instead of "Merged"), you can still give the contributor credit by reopening it and merging it on GitHub. The merge can be effectively "empty" (no new diff vs `main`); what matters is that the PR ends up **Merged**.
+
+1.  **Reopen the PR** on GitHub (Reopen button on the closed PR page), or: `gh pr reopen <PR_NUMBER>`.
+2.  **Fetch the PR branch** (the branch lives on the contributor's fork):
+    ```bash
+    git fetch origin pull/<PR_NUMBER>/head:pr-<PR_NUMBER>-tmp
+    git checkout pr-<PR_NUMBER>-tmp
+    ```
+3.  **Merge `main` into it** and resolve conflicts:
+    ```bash
+    git merge origin/main -m "chore: merge main to resolve conflicts"
+    ```
+    For conflicts in generated/registry files (`CATALOG.md`, `data/catalog.json`, etc.), keep **main's version** and remove those derived files from the PR branch:
+    `git checkout --theirs CATALOG.md data/catalog.json` (and any other derived files), then `git add` them.
+4.  **Commit the merge** (if not already done):  
+    `git commit -m "chore: merge main to resolve conflicts" --no-edit`
+5.  **Push to the contributor's fork.** Add their fork as a remote if needed (replace `USER` and `BRANCH` with the PR head owner and branch from the PR page):
+    ```bash
+    git remote add <user>-fork https://github.com/<USER>/agentic-awesome-skills.git
+    git push <user>-fork pr-<PR_NUMBER>-tmp:<BRANCH>
+    ```
+    This works if the contributor enabled **"Allow edits from maintainers"** (or you have push access). If push is denied, ask the contributor to merge `main` into their branch and push; then use `merge:batch`.
+6.  **Merge the PR through the guarded command:**
+    `npm run merge:batch -- --prs <PR_NUMBER> [--reviewed-head <40-character-head-sha>]`
+    The PR will show as **Merged** and the contributor will get credit.
+7.  **Switch back to `main`:**  
+    `git checkout main`
+
+We used this flow for PRs [#220](https://github.com/sickn33/agentic-awesome-skills/pull/220), [#224](https://github.com/sickn33/agentic-awesome-skills/pull/224), and [#225](https://github.com/sickn33/agentic-awesome-skills/pull/225) after they had been integrated locally and closed.
+
+**Right after merging:**
+
+1.  **If the PR had `Closes #N`** — The issue is closed automatically; no extra action.
+2.  **If an issue was fixed but not linked** — Close it manually and add a comment, e.g.:
+    ```text
+    Fixed in #<PR_NUMBER>. Shipped in release vX.Y.Z.
+    ```
+3.  **Complete the post-batch credits verification below** after the source batch, including a one-PR batch.
+
+**Maintainer shortcut for batched PRs:**
+
+- Use `npm run merge:batch -- --prs 450,449,446,451` to automate the ordered maintainer flow for multiple PRs. See [docs/maintainers/merge-batch.md](../docs/maintainers/merge-batch.md) for the short usage guide.
+- Pages is release-only: ordinary pushes to `main` never deploy it. Dispatch `.github/workflows/pages.yml` only from the exact immutable `vX.Y.Z` tag at an approved publication gate, never from `main` or another branch. Canonical-sync merges still use `--skip-pages` and carry `[skip pages]` as a durable audit marker; the four routine app-bound checks and CodeQL remain enforced. The supported Core preview uses the targeted packed smoke workflow; retired certified-v1 verifier harnesses are not part of the repository workflow.
+- The script keeps the GitHub-only squash merge rule, handles guarded fork-run approvals, waits on required checks bound to the current PR and exact head, and hands contributor/generated drift to the protected canonical-sync lane. It does not run `sync:contributors` itself, mutate PR metadata, close/reopen PRs, or retry base drift; rerun it from fresh `origin/main` whenever the base or head moves. Sensitive repository-wide source changes use the same-repository exception only when the PR is authored by the repository owner and its exact full head SHA is attested; collaborator-authored sensitive PRs remain under the external safety policy.
+- It is intentionally not a conflict resolver. If a PR is conflicting, stop and follow the manual conflict playbook.
+
+### C. Post-Batch Credits Verification
+
+After every source batch, including a one-PR batch, verify that both README credit surfaces converge correctly on protected `main`:
+
+- `### Community Contributors` / `## Credits & Sources` for external repositories referenced by the merged work
+- `## Repo Contributors` for the human contributor list
+
+Do not run a local generator after every individual merge. The trusted `main` workflow coalesces contributor and generated drift in the protected canonical-sync PR after the source batch.
+
+1.  **Pull the final source-batch state locally**:
+    ```bash
+    git checkout main
+    git pull --ff-only origin main
+    ```
+
+2.  **Verify the canonical-sync handoff**:
+    - Let the trusted workflow run `sync:repo-state`, which includes `sync:contributors`, and open or update `automation/canonical-repo-state` when drift exists.
+    - Verify that the protected canonical PR contains the expected `## Repo Contributors` update while preserving custom bot/app links.
+    - Do not commit generated or contributor drift to an ordinary source PR and do not push it directly to `main`.
+
+3.  **Audit external-source credits for the source batch**:
+    - Read the merged PR descriptions, changed files, linked issues, and any release-note draft text you plan to ship.
+    - External-source credits should already have passed the source-PR credit gate. If the batch still reveals a missing or inaccurate README credit, treat that as unmanaged source repair rather than generated canonical drift.
+    - Treat skill frontmatter `source_repo` + `source_type` as the primary source of truth when present.
+    - If the repo is from an official organization/project source, place it under `### Official Sources`.
+    - If the repo is a non-official ecosystem/community source, place it under `### Community Contributors`.
+    - If the PR reveals that a credited repo is dead, renamed, archived, or overstated, fix the README entry in the same follow-up pass instead of leaving stale metadata behind.
+    - Release notes are not a substitute for README attribution. If a repo appears in the merged work or planned release notes and belongs in credits, add it to the README at merge time.
+
+4.  **Complete convergence through the correct protected lane**:
+    - Merge the managed-only canonical-sync PR after its required checks.
+    - If an unmanaged external-source credit repair is still required, make it on a topic branch and merge it by pull request; never add it to the canonical-sync PR or push it directly to `main`.
+    - Do not leave contributor or community-credit drift until the next release.
+
+5.  **Then continue with normal maintenance**:
+    - Verify Table of Contents if you touched headings.
+    - Prepare the release when ready (see [§4 Release Workflow](#4-release-workflow) below).
+
+---
+
+## 2. 📝 Documentation "Pixel Perfect" Rules
+
+We discovered several consistency issues during V4 development. Follow these rules STRICTLY.
+
+### A. Table of Contents (TOC) Anchors
+
+GitHub's anchor generation breaks if headers have emojis.
+
+- **BAD**: `## 🚀 New Here?` -> Anchor: `#--new-here` (Broken)
+- **GOOD**: `## New Here?` -> Anchor: `#new-here` (Clean)
+
+**Rule**: **NEVER put emojis in H2 (`##`) headers.** Put them in the text below if needed.
+
+### B. The "Trinity" of Docs
+
+If you update installation instructions or tool compatibility, you MUST update all 3 files:
+
+1.  `README.md` (Source of Truth)
+2.  `docs/users/getting-started.md` (Beginner Guide)
+3.  `docs/users/faq.md` (Troubleshooting)
+
+_Common pitfall: Updating the clone URL in README but leaving an old one in FAQ._
+
+### C. Statistics Consistency (CRITICAL)
+
+If you add/remove skills, you **MUST** ensure generated counts and user-facing claims stay aligned.
+
+Locations to check:
+
+1.  `README.md`
+2.  `package.json` description
+3.  `skills_index.json` and generated catalog artifacts
+4.  Any user docs that deliberately hardcode counts
+
+### D. Credits Policy (Who goes where?)
+
+- **Official Sources**: Use this for **official org/vendor/project repos**.
+  - _Rule_: "This came from the official repo for the tool/company/project." -> Add to `### Official Sources`.
+- **Community Contributors**: Use this for **non-official external repos** that contributed skills, references, templates, or other source material.
+  - _Rule_: "This merged PR depends on or imports material from a community repo." -> Add to `### Community Contributors`.
+- **Credits & Sources**: This whole area is for **external repos and upstream sources**, split into Official vs Community.
+- **Repo Contributors**: Use this for **Pull Requests**.
+  - _Rule_: "This user sent a PR." -> Add to `## Repo Contributors`.
+
+**Merge rule:** after every PR merge, check **both** `### Community Contributors` and `## Repo Contributors`. A merge is not fully done until both sections are either confirmed unchanged or updated and pushed.
+
+### E. Badges & Links
+
+- **Antigravity Badge**: Must point to `https://github.com/sickn33/agentic-awesome-skills`, NOT `anthropics/antigravity`.
+- **License**: Ensure the link points to `LICENSE` file.
+
+### F. Workflows Consistency (NEW in V5)
+
+If you touch any Workflows-related artifact, keep all workflow surfaces in sync:
+
+1. `docs/users/workflows.md` (human-readable playbooks)
+2. `data/workflows.json` (machine-readable schema)
+3. `skills/antigravity-workflows/SKILL.md` (orchestration entrypoint)
+
+Rules:
+
+- Every workflow id referenced in docs must exist in `data/workflows.json`.
+- If you add/remove a workflow step category, update prompt examples accordingly.
+- If a workflow references optional skills not yet merged (example: `go-playwright`), mark them explicitly as **optional** in docs.
+- If workflow onboarding text is changed, update the docs trinity:
+  - `README.md`
+  - `docs/users/getting-started.md`
+  - `docs/users/faq.md`
+
+---
+
+## 3. 🛡️ Governance & Quality Bar
+
+### A. The 6-Point Quality Check
+
+Reject any PR that fails this:
+
+1.  **Metadata**: Has `name`, `description`?
+2.  **Safety**: `risk: offensive` used for red-team tools?
+3.  **Clarity**: Does it say _when_ to use it?
+4.  **Examples**: Copy-pasteable code blocks?
+5.  **Risk Limits**: If the skill includes shell/network/filesystem/mutation guidance, instructions include explicit prerequisites and warnings.
+6.  **Repo Security Scan**: Run `npm run security:docs` for command-heavy, network-execution, or token-like guidance in `SKILL.md`.
+
+### B. Risk Labels (V4)
+
+- ⚪ **Safe**: Default.
+- 🔴 **Risk**: Destructive/Security tools. MUST have `[Authorized Use Only]` warning.
+- 🟣 **Official**: Vendor mirrors only.
+
+---
+
+## 4. 🚀 Release Workflow
+
+When cutting a new version, follow the maintainer playbook in [`docs/maintainers/release-process.md`](../docs/maintainers/release-process.md).
+
+**Release checklist (order matters):**  
+Preflight verification → Changelog → repository/plugin convergence → `npm run release:prepare -- X.Y.Z` → `npm run release:publish -- X.Y.Z` → npm publish → exact-SHA CI/CodeQL/Pages/live proof → update and handshake every configured local AAS MCP host → final no-drift reconciliation → Close remaining linked issues.
+
+---
+
+1.  **Run release verification**:
+    ```bash
+    npm run release:preflight
+    ```
+    This now runs the deterministic `sync:release-state` path, refreshes tracked web assets, executes the local test suite, runs the web-app build, and performs `npm pack --dry-run --json` before a release is considered healthy.
+    If `release:preflight` fails on `check:warning-budget`, treat it as a PR-quality failure and fix the new warnings in source rather than bypassing the gate at release time.
+    If the installer or packaged runtime code changed, you must also verify that new imports are satisfied by `dependencies` rather than `devDependencies`, and ensure the npm-package/runtime tests cover that path. `npm pack --dry-run` alone will not catch missing runtime deps in a clean `npx` environment.
+    Optional diagnostic pass:
+    ```bash
+    npm run validate:strict
+    ```
+2.  **Update Changelog**: Add the new release section to `CHANGELOG.md`.
+3.  **Prepare the protected release PR**:
+    ```bash
+    npm run release:prepare -- X.Y.Z
+    ```
+    This validates the release, aligns versioned files, writes the release notes artifact, creates the release commit on `release/vX.Y.Z`, pushes it, and opens the protected release PR. Alignment includes canonical registries, tracked web assets, the offline catalog, compatibility data, both marketplaces, every Codex/Claude plugin mirror, every eligible Agent Plugins bundle manifest, every editorial bundle, and all release-owned plugin manifests. The tag is created only after that exact PR is merged.
+4.  **Create GitHub Release** (REQUIRED):
+
+    > ⚠️ **CRITICAL**: Pushing a tag (`git push --tags`) is NOT enough. You must create a **GitHub Release Object** for it to appear in the sidebar and trigger the NPM publish workflow.
+
+    Use the GitHub CLI:
+
+    ```bash
+    npm run release:publish -- X.Y.Z
+    ```
+
+    The publisher must resolve exactly one merged release PR from the same repository, authored by the repository owner, with base `main`, exact title `chore: release vX.Y.Z`, and head branch `release/vX.Y.Z`. Zero or multiple candidates fail closed; never select the newest approximate match.
+
+    Before any tagged repository code executes, the npm publication workflow checks out protected `main`, peels the published tag, requires that commit to be an ancestor of current `origin/main`, and reads the tagged `package.json` only as data to validate the version. Manual dispatch is disabled and cannot bypass this provenance gate.
+
+    **Important:** The release tag must match `package.json`'s version. The [Publish to npm](workflows/publish-npm.yml) workflow runs on **Release published** and will run `npm publish`; npm rejects republishing the same version.
+    Before publishing, that workflow re-runs `sync:release-state`, checks for canonical drift with `git diff --exit-code`, runs tests/docs security/web build, and performs `npm pack --dry-run --json`.
+
+    Manual GitHub UI publication is emergency-only and does not waive the protected-merge, identity, or full-alignment gates below.
+
+5.  **Publish to npm** (so `npx agentic-awesome-skills` works):
+    - The normal path is CI: publishing the protected GitHub Release triggers [Publish to npm](.github/workflows/publish-npm.yml), which publishes the stable version to `latest` and a prerelease to `next` when `NPM_TOKEN` is configured.
+    - Manual `npm publish` is emergency-only. It must publish the exact protected tag contents with the intended dist-tag and does not waive any verification below.
+
+6.  **Run the mandatory full-release-alignment gate**:
+    - Re-run `npm run sync:release-state`, `npm run plugin-compat:check`, and `npm run bundles:check`; require a clean, idempotent second pass.
+    - Confirm `package.json`, `package-lock.json`, generated registries and offline catalog, tracked web assets, `.agents/plugins/marketplace.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, every published Codex/Claude plugin manifest, and every eligible Agent Plugins editorial-bundle manifest are regenerated and versioned as `X.Y.Z`.
+    - Bind the local/remote `main`, tag, GitHub Release, npm version and intended dist-tag, required CI, CodeQL, and release-only Pages deployment to the exact released commit. Verify live `llms.txt`, `skills.json`, catalog/plugin routes, and the legacy bridge.
+    - Discover every existing AAS MCP entry from real local host configuration. Update each existing host with the published package's digest-bound two-pass `aas mcp configure` flow, pin `agentic-awesome-skills@X.Y.Z` and `--version X.Y.Z`, preserve a backup, restart or reconnect the client, and prove `initialize` plus `tools/list` reports `X.Y.Z`. Never create an absent host entry without separate authorization.
+    - Fetch `origin/main` again after automation settles, fast-forward local `main`, require `main...origin/main` to be `0 0`, and repeat the no-drift, public-surface, and MCP parity checks. Any mismatch or inaccessible configured host keeps the release incomplete.
+
+7.  **Close linked issue(s)**:
+    - Issues that had `Closes #N` / `Fixes #N` in a merged PR are already closed.
+    - For any issue that was fixed by the release but not auto-closed, close it manually and add a comment, e.g.:
+      ```bash
+      gh issue close <ID> --comment "Shipped in vX.Y.Z. See CHANGELOG.md and release notes."
+      ```
+
+### GitHub Release Notes Requirements
+
+Every published GitHub Release should work as a discovery page, not just an internal changelog dump.
+
+Required rules:
+
+1. Put the user-facing tool language early:
+   - mention Claude Code, Cursor, Codex CLI, Gemini CLI, or the specific supported tools that matter for that release.
+2. Add a short "Start here" block near the top:
+   - install command
+   - link to `README.md#choose-your-tool`
+   - link to `README.md#best-skills-by-tool`
+   - link to `docs/users/bundles.md`
+   - link to `docs/users/workflows.md`
+3. Keep the first paragraph readable to someone arriving from Google or GitHub Releases.
+4. Prefer plain ASCII section headers in release notes.
+5. Do not rewrite historical releases in bulk. Improve the latest release and all future releases.
+
+### GitHub Release Notes Template
+
+Use this structure for the published GitHub Release object:
+
+```markdown
+## [X.Y.Z] - YYYY-MM-DD - "User-facing title"
+
+> Installable skill library update for Claude Code, Cursor, Codex CLI, Gemini CLI, Antigravity, and related AI coding assistants.
+
+Start here:
+
+- Install: `npx agentic-awesome-skills`
+- Choose your tool: [README -> Choose Your Tool](https://github.com/sickn33/agentic-awesome-skills#choose-your-tool)
+- Best skills by tool: [README -> Best Skills By Tool](https://github.com/sickn33/agentic-awesome-skills#best-skills-by-tool)
+- Bundles: [docs/users/bundles.md](https://github.com/sickn33/agentic-awesome-skills/blob/main/docs/users/bundles.md)
+- Workflows: [docs/users/workflows.md](https://github.com/sickn33/agentic-awesome-skills/blob/main/docs/users/workflows.md)
+
+[Brief paragraph explaining what changed and who the release helps.]
+
+## New Skills
+
+- **skill-name** - user-facing summary
+
+## Improvements
+
+- **Area**: user-facing improvement summary
+
+## Who should care
+
+- **Claude Code users** ...
+- **Cursor users** ...
+- **Codex CLI users** ...
+- **Gemini CLI users** ...
+
+## Credits
+
+- **@username** for `skill-name`
+
+Upgrade now: `git pull origin main` to fetch the latest skills.
+```
+
+### Social Preview
+
+If you set a repository social preview image on GitHub, keep these rules:
+
+- focus on the core value proposition;
+- mention the primary supported tools when helpful;
+- avoid dense text or tiny unreadable logos;
+- refresh it when repository positioning changes materially.
+
+Manual upload path on GitHub:
+
+1. Open the repository on GitHub.
+2. Go to **Settings**.
+3. Open the **Social preview** section.
+4. Upload the image you want to use.
+
+### Pinned Discussion Template
+
+Canonical onboarding discussion:
+
+- Title: `Start here: best skills by tool`
+- Current live discussion: `https://github.com/sickn33/agentic-awesome-skills/discussions/361`
+
+When refreshing or recreating the pinned onboarding discussion, keep this structure:
+
+~~~markdown
+If you are new to **Agentic Awesome Skills**, start here instead of browsing all skills at random.
+
+## Install in 1 minute
+
+```bash
+npx agentic-awesome-skills
+```
+
+## Best starting pages by tool
+
+- Claude Code
+- Cursor
+- Codex CLI
+- Gemini CLI
+
+## Start with a bundle
+
+- Bundles
+- Workflows
+- Getting started
+- Usage guide
+
+## Best starter skills for most users
+
+- `@brainstorming`
+- `@lint-and-validate`
+- `@systematic-debugging`
+- `@create-pr`
+- `@security-auditor`
+
+## Compare before you install
+
+- comparison pages
+- best-of pages
+~~~
+
+If GitHub does not support pinning via API, create/update the discussion programmatically if possible and pin it manually in the UI.
+
+### When to Close an Issue
+
+| Situation                                                | Action                                                                                         |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| PR merges and PR body contains `Closes #N` or `Fixes #N` | GitHub closes the issue automatically.                                                         |
+| PR merges but did not reference the issue                | After merge, close manually: `gh issue close N --comment "Fixed in #<PR>. Shipped in vX.Y.Z."` |
+| Fix/feature shipped in a release, no PR referenced       | Close with: `gh issue close N --comment "Shipped in vX.Y.Z. See CHANGELOG."`                   |
+
+### 📋 Changelog Entry Template
+
+Each new release section in `CHANGELOG.md` should follow [Keep a Changelog](https://keepachangelog.com/) and this structure:
+
+```markdown
+## [X.Y.Z] - YYYY-MM-DD - "[Theme Name]"
+
+> **[One-line catchy summary of the release]**
+
+[Brief 2-3 sentence intro about the release's impact]
+
+## 🚀 New Skills
+
+### [Emoji] [Skill Name](skills/skill-name/)
+
+**[Bold high-level benefit]**
+[Description of what it does]
+
+- **Key Feature 1**: [Detail]
+- **Key Feature 2**: [Detail]
+
+> **Try it:** `(User Prompt) ...`
+
+---
+
+## 📦 Improvements
+
+- **Registry Update**: Now tracking [N] skills.
+- **[Component]**: [Change detail]
+
+## 👥 Credits
+
+A huge shoutout to our community contributors:
+
+- **@username** for `skill-name`
+- **@username** for `fix-name`
+
+---
+
+_Upgrade now: `git pull origin main` to fetch the latest skills._
+```
+
+---
+
+## 5. 🚨 Emergency Fixes
+
+If a skill is found to be harmful or broken:
+
+1.  **Move to broken folder** (don't detect): `mv skills/bad-skill skills/.broken/`
+2.  **Or Add Warning**: Add `> [!WARNING]` to the top of `SKILL.md`.
+3.  **Push Immediately**.
+
+---
+
+## 6. 📁 Data directory note
+
+`data/package.json` exists for historical reasons; the build and catalog scripts run from the repo root and use root `node_modules`. You can ignore or remove `data/package.json` and `data/node_modules` if present.

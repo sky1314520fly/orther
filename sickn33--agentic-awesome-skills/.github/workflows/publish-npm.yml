@@ -1,0 +1,106 @@
+# Publish agentic-awesome-skills to npm on release.
+# Requires NPM_TOKEN secret (npm → Access Tokens → Granular token with Publish).
+# Before creating a Release: bump package.json "version" (npm forbids republishing the same version).
+# Release tag (e.g. v4.6.1) should match package.json version.
+
+name: Publish to npm
+
+permissions:
+  contents: read
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify protected release provenance
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          test "$GITHUB_EVENT_NAME" = "release"
+          test -n "$RELEASE_TAG"
+          git fetch --force origin main "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          tag_commit="$(git rev-list -n1 "$RELEASE_TAG")"
+          main_commit="$(git rev-parse origin/main)"
+          git merge-base --is-ancestor "$tag_commit" "$main_commit"
+          tag_version="$(git show "$RELEASE_TAG:package.json" | node -e 'let s=""; process.stdin.on("data",c=>s+=c); process.stdin.on("end",()=>process.stdout.write(JSON.parse(s).version))')"
+          test "$RELEASE_TAG" = "v$tag_version"
+          git checkout --detach "$tag_commit"
+
+      - name: Setup Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.10"
+
+      - name: Install Python dependencies
+        run: pip install -r tools/requirements.txt
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22.23.1"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Verify checked-out release identity
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          expected_tag="v$(node -p "require('./package.json').version")"
+          test "$RELEASE_TAG" = "$expected_tag"
+          test "$(git rev-parse HEAD)" = "$(git rev-list -n1 "$RELEASE_TAG")"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+
+      - name: Validate references
+        run: npm run validate:references
+
+      - name: Sync release state
+        run: npm run sync:release-state
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Install web-app dependencies
+        run: npm run app:install
+
+      - name: Run web app coverage
+        run: npm run app:test:coverage
+
+      - name: Run docs security checks
+        run: npm run security:docs
+
+      - name: Build web app
+        run: npm run app:build
+
+      - name: Verify canonical release state
+        run: git diff --exit-code
+
+      - name: Dry-run npm package
+        run: npm pack --dry-run --json
+
+      - name: Publish
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          node -e "const v=process.argv[1]; const semver=/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$/; if (!semver.test(v)) process.exit(1)" "$version"
+          if [[ "$version" == *-* ]]; then
+            npm publish --tag next
+          else
+            npm publish --tag latest
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
