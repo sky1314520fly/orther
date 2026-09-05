@@ -53,3 +53,4 @@
 | [garrytan/gbrain](garrytan--gbrain/) | 29600 | 223 | `MIT` | `master` | [`8c70f6255047`](https://github.com/garrytan/gbrain/commit/8c70f6255047a7647adb30b1d6333a48068d9fa5) |
 | [garrytan/gstack](garrytan--gstack/) | 131399 | 61 | `MIT` | `main` | [`0d1bd5616c0e`](https://github.com/garrytan/gstack/commit/0d1bd5616c0ef096bb7ccee336f63c60ee408618) |
 | [google-labs-code/design.md](google-labs-code--design.md/) | 27737 | 4 | `Apache-2.0` | `main` | [`9bf8eae67128`](https://github.com/google-labs-code/design.md/commit/9bf8eae67128b6cc55ad9bf86665767deb4c11cd) |
+| [luongnv89/claude-howto](luongnv89--claude-howto/) | 41356 | 31 | `MIT` | `main` | [`1e16914a8de8`](https://github.com/luongnv89/claude-howto/commit/1e16914a8de857d097e66d7ef15683e52955e596) |
