@@ -64,3 +64,4 @@
 | [Egonex-AI/Understand-Anything](Egonex-AI--Understand-Anything/) | 81512 | 9 | `MIT` | `main` | [`787da45adbf1`](https://github.com/Egonex-AI/Understand-Anything/commit/787da45adbf18aab5c3e3e531b0374dd576f263c) |
 | [Hmbown/Codewhale](Hmbown--Codewhale/) | 40915 | 47 | `MIT` | `main` | [`c042ea2de135`](https://github.com/Hmbown/Codewhale/commit/c042ea2de13512ef88a10c142061307d840f2478) |
 | [different-ai/openwork](different-ai--openwork/) | 23337 | 21 | `NOASSERTION` | `dev` | [`0e09eab927fe`](https://github.com/different-ai/openwork/commit/0e09eab927fe66ffbdbc13c9f8eca4e264262bc8) |
+| [2025Emma/vibe-coding-cn](2025Emma--vibe-coding-cn/) | 22939 | 30 | `MIT` | `main` | [`9b42dd10ddf3`](https://github.com/2025Emma/vibe-coding-cn/commit/9b42dd10ddf3fff58f8c7a4d347175db107d7bf9) |
