@@ -1,0 +1,11 @@
+# 未导入的高星候选仓库
+
+以下候选仓库虽然包含 `SKILL.md` 且 Stars 大于 20,000，但未发现清晰的仓库级许可证，因此未写入：
+
+- `ComposioHQ/awesome-claude-skills`
+- `anthropics/skills`
+- `multica-ai/andrej-karpathy-skills`
+- `openai/skills`
+- `vercel-labs/agent-skills`
+
+其他被搜索命中的高星项目因不属于 AI Skills 仓库或未发现实际 `SKILL.md` 而未导入。
