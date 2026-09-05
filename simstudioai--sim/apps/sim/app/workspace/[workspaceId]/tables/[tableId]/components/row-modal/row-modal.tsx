@@ -1,0 +1,395 @@
+'use client'
+
+import { useId, useRef, useState } from 'react'
+import {
+  Checkbox,
+  Chip,
+  ChipConfirmModal,
+  ChipDatePicker,
+  ChipModal,
+  ChipModalBody,
+  ChipModalError,
+  ChipModalField,
+  ChipModalFooter,
+  ChipModalHeader,
+  ChipTimePicker,
+  Label,
+  toast,
+} from '@sim/emcn'
+import { createLogger } from '@sim/logger'
+import { getErrorMessage } from '@sim/utils/errors'
+import { useParams } from 'next/navigation'
+import type { ColumnDefinition, TableInfo, TableRow } from '@/lib/table'
+import { columnTypeOf } from '@/lib/table/column-types'
+import { resolveCurrencyCode } from '@/lib/table/currency'
+import { getTimezoneEditBlockedMessage } from '@/app/workspace/[workspaceId]/tables/[tableId]/components/timezone-editing'
+import { type TimezoneState, useTimezoneState } from '@/hooks/queries/general-settings'
+import { useDeleteTableRow, useDeleteTableRows, useUpdateTableRow } from '@/hooks/queries/tables'
+import {
+  cleanCellValue,
+  dateValueToLocalParts,
+  formatValueForInput,
+  localPartsToDateValue,
+  todayLocalCalendarDate,
+} from '../../utils'
+import { SelectValueEditor } from '../select-field'
+
+const logger = createLogger('RowModal')
+
+export interface RowModalProps {
+  mode: 'edit' | 'delete'
+  isOpen: boolean
+  onClose: () => void
+  table: TableInfo
+  row?: TableRow
+  rowIds?: string[]
+  onSuccess: () => void
+}
+
+function cleanRowData(
+  columns: ColumnDefinition[],
+  rowData: Record<string, unknown>,
+  timeZone: string,
+  dateEditorsReady: boolean
+): Record<string, unknown> {
+  const cleanData: Record<string, unknown> = {}
+
+  columns.forEach((col) => {
+    const value = rowData[col.name]
+    if (columnTypeOf(col).editor === 'date' && !dateEditorsReady) {
+      return
+    }
+    try {
+      cleanData[col.name] = cleanCellValue(value, col, timeZone)
+    } catch {
+      throw new Error(`Invalid JSON for field: ${col.name}`)
+    }
+  })
+
+  return cleanData
+}
+
+/**
+ * Modal for editing a row's values or confirming row deletion.
+ *
+ * `rowData` is initialized from the `row` prop at mount time only. Both call-sites
+ * conditionally mount this component per open, so each open gets fresh state. If a
+ * call-site ever keeps it mounted across target-row changes, it must supply a `key`
+ * prop (e.g. the row id) so React remounts with the new row's values.
+ */
+export function RowModal({ mode, isOpen, onClose, table, row, rowIds, onSuccess }: RowModalProps) {
+  const params = useParams()
+  const workspaceId = params.workspaceId as string
+  const tableId = table.id
+
+  const schema = table?.schema
+  const columns = schema?.columns || []
+
+  const timezoneState = useTimezoneState()
+  const editTimeZoneRef = useRef<string | null>(null)
+  if (timezoneState.status === 'ready' && editTimeZoneRef.current === null) {
+    editTimeZoneRef.current = timezoneState.timezone
+  }
+  const dateEditorsReady = editTimeZoneRef.current !== null
+  const timeZone = editTimeZoneRef.current ?? timezoneState.timezone
+  const [rowData, setRowData] = useState<Record<string, unknown>>(() =>
+    mode === 'edit' && row ? row.data : {}
+  )
+  const [error, setError] = useState<string | null>(null)
+  const updateRowMutation = useUpdateTableRow({ workspaceId, tableId })
+  const deleteRowMutation = useDeleteTableRow({ workspaceId, tableId })
+  const deleteRowsMutation = useDeleteTableRows({ workspaceId, tableId })
+  const isSubmitting =
+    updateRowMutation.isPending || deleteRowMutation.isPending || deleteRowsMutation.isPending
+
+  const timezoneBlockedMessage = getTimezoneEditBlockedMessage(timezoneState)
+  const hasEditableColumn = columns.some(
+    (column) => columnTypeOf(column).editor !== 'date' || dateEditorsReady
+  )
+
+  const handleFormSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    setError(null)
+    if (!hasEditableColumn) return
+
+    try {
+      const cleanData = cleanRowData(columns, rowData, timeZone, dateEditorsReady)
+
+      if (row) {
+        await updateRowMutation.mutateAsync({ rowId: row.id, data: cleanData })
+      }
+
+      onSuccess()
+    } catch (err) {
+      logger.error('Failed to edit row:', err)
+      setError(getErrorMessage(err, 'Failed to edit row'))
+    }
+  }
+
+  const handleDelete = async () => {
+    setError(null)
+
+    const idsToDelete = rowIds ?? (row ? [row.id] : [])
+
+    try {
+      if (idsToDelete.length === 1) {
+        await deleteRowMutation.mutateAsync(idsToDelete[0])
+      } else {
+        await deleteRowsMutation.mutateAsync(idsToDelete)
+      }
+
+      onSuccess()
+    } catch (err) {
+      logger.error('Failed to delete row(s):', err)
+      setError(getErrorMessage(err, 'Failed to delete row(s)'))
+    }
+  }
+
+  const handleClose = () => {
+    setError(null)
+    onClose()
+  }
+
+  if (mode === 'delete') {
+    const deleteCount = rowIds?.length ?? (row ? 1 : 0)
+    const isSingleRow = deleteCount === 1
+
+    return (
+      <ChipConfirmModal
+        open={isOpen}
+        onOpenChange={handleClose}
+        srTitle={`Delete ${isSingleRow ? 'Row' : `${deleteCount} Rows`}`}
+        title={`Delete ${isSingleRow ? 'Row' : `${deleteCount} Rows`}`}
+        text={[
+          `Are you sure you want to delete ${isSingleRow ? 'this row' : `these ${deleteCount} rows`}? `,
+          {
+            text: `This will permanently remove all data in ${isSingleRow ? 'this row' : 'these rows'}.`,
+            error: true,
+          },
+          ' This action cannot be undone.',
+        ]}
+        confirm={{
+          label: 'Delete',
+          onClick: handleDelete,
+          pending: isSubmitting,
+          pendingLabel: 'Deleting...',
+        }}
+      >
+        <ChipModalError>{error}</ChipModalError>
+      </ChipConfirmModal>
+    )
+  }
+
+  return (
+    <ChipModal open={isOpen} onOpenChange={handleClose} srTitle='Edit Row' size='lg'>
+      <ChipModalHeader onClose={handleClose}>Edit Row</ChipModalHeader>
+      <ChipModalBody>
+        <p className='px-2 text-[var(--text-tertiary)] text-small'>
+          Update values for {table?.name ?? 'table'}
+        </p>
+        <form onSubmit={handleFormSubmit} className='contents'>
+          <button type='submit' hidden disabled={isSubmitting || !hasEditableColumn} />
+          {columns.map((column) =>
+            columnTypeOf(column).editor === 'date' && !dateEditorsReady ? (
+              <TimezoneBlockedColumnField
+                key={column.name}
+                column={column}
+                value={rowData[column.name]}
+                status={timezoneState.status}
+                onAttemptEdit={() => {
+                  if (timezoneBlockedMessage) toast.error(timezoneBlockedMessage)
+                }}
+              />
+            ) : (
+              <ColumnField
+                key={column.name}
+                column={column}
+                value={rowData[column.name]}
+                timeZone={timeZone}
+                onChange={(value) => setRowData((prev) => ({ ...prev, [column.name]: value }))}
+              />
+            )
+          )}
+        </form>
+        <ChipModalError>{error}</ChipModalError>
+      </ChipModalBody>
+      <ChipModalFooter
+        onCancel={handleClose}
+        cancelDisabled={isSubmitting}
+        primaryAction={{
+          label: isSubmitting ? 'Updating...' : 'Update Row',
+          onClick: () => handleFormSubmit(),
+          disabled: isSubmitting || !hasEditableColumn,
+        }}
+      />
+    </ChipModal>
+  )
+}
+
+interface ColumnFieldProps {
+  column: ColumnDefinition
+  value: unknown
+  timeZone: string
+  onChange: (value: unknown) => void
+}
+
+function ColumnTitle({ column }: { column: ColumnDefinition }) {
+  return (
+    <>
+      {column.name}
+      {column.unique && (
+        <span className='ml-1.5 font-normal text-[var(--text-tertiary)] text-xs'>(unique)</span>
+      )}
+    </>
+  )
+}
+
+function columnFieldHint(column: ColumnDefinition): string {
+  const typeLabel =
+    column.type === 'currency'
+      ? `currency (${resolveCurrencyCode(column.currencyCode)})`
+      : column.type
+  return `Type: ${typeLabel}${column.required ? '' : ' (optional)'}`
+}
+
+interface TimezoneBlockedColumnFieldProps {
+  column: ColumnDefinition
+  value: unknown
+  status: TimezoneState['status']
+  onAttemptEdit: () => void
+}
+
+function TimezoneBlockedColumnField({
+  column,
+  value,
+  status,
+  onAttemptEdit,
+}: TimezoneBlockedColumnFieldProps) {
+  const rawValue =
+    typeof value === 'string'
+      ? value
+      : value === null || value === undefined
+        ? ''
+        : JSON.stringify(value)
+  const displayValue = status === 'loading' ? 'Loading timezone…' : rawValue || 'No value'
+
+  return (
+    <ChipModalField
+      type='custom'
+      title={<ColumnTitle column={column} />}
+      required={column.required}
+      hint={columnFieldHint(column)}
+    >
+      {(aria) => (
+        <Chip
+          {...aria}
+          variant='border'
+          fullWidth
+          onClick={onAttemptEdit}
+          aria-label={`Edit ${column.name}`}
+        >
+          {displayValue}
+        </Chip>
+      )}
+    </ChipModalField>
+  )
+}
+
+function ColumnField({ column, value, timeZone, onChange }: ColumnFieldProps) {
+  const checkboxId = useId()
+  const title = <ColumnTitle column={column} />
+  const hint = columnFieldHint(column)
+  const definition = columnTypeOf(column)
+
+  if (definition.editor === 'toggle') {
+    return (
+      <ChipModalField type='custom' title={title} required={column.required} hint={hint}>
+        <div className='flex items-center gap-2'>
+          <Checkbox
+            id={checkboxId}
+            checked={Boolean(value)}
+            onCheckedChange={(checked) => onChange(checked === true)}
+          />
+          <Label
+            htmlFor={checkboxId}
+            className='font-normal text-[var(--text-tertiary)] text-small'
+          >
+            {value ? 'True' : 'False'}
+          </Label>
+        </div>
+      </ChipModalField>
+    )
+  }
+
+  // The one type wanting a mono multi-line field; `editor: 'text'` covers both
+  // this and a plain input, so it stays explicit rather than inventing a field
+  // only one type would ever set.
+  if (column.type === 'json') {
+    return (
+      <ChipModalField
+        type='textarea'
+        title={title}
+        required={column.required}
+        hint={hint}
+        mono
+        value={formatValueForInput(value, column.type, timeZone)}
+        onChange={onChange}
+        placeholder='{"key": "value"}'
+        rows={4}
+      />
+    )
+  }
+
+  if (definition.editor === 'date') {
+    const parts = dateValueToLocalParts(formatValueForInput(value, column.type, timeZone))
+    const valueFromParts = (day: string, time: string | null) =>
+      column.type === 'ttl' && time ? `${day}T${time}` : localPartsToDateValue(day, time, timeZone)
+    return (
+      <ChipModalField type='custom' title={title} required={column.required} hint={hint}>
+        <div className='flex items-center gap-2'>
+          <ChipDatePicker
+            value={parts.day ?? undefined}
+            today={todayLocalCalendarDate(timeZone)}
+            onChange={(day) => onChange(valueFromParts(day, parts.time))}
+            placeholder='Select date'
+            className='flex-1'
+          />
+          <ChipTimePicker
+            value={parts.time?.slice(0, 5)}
+            onChange={(time) =>
+              onChange(valueFromParts(parts.day ?? todayLocalCalendarDate(timeZone), time))
+            }
+            placeholder='Add time'
+            className='w-[110px]'
+          />
+        </div>
+      </ChipModalField>
+    )
+  }
+
+  if (definition.editor === 'select') {
+    return (
+      <ChipModalField type='custom' title={title} required={column.required} hint={hint}>
+        <SelectValueEditor column={column} value={value} onChange={onChange} fullWidth />
+      </ChipModalField>
+    )
+  }
+
+  return (
+    <ChipModalField
+      type='input'
+      title={title}
+      required={column.required}
+      hint={hint}
+      // A native number input rejects the formatted amounts this type's parser
+      // exists to accept, so those types take a text field — the same shape the
+      // grid's inline editor uses.
+      inputType={
+        definition.inputMode === 'decimal' && !definition.acceptsFormattedInput ? 'number' : 'text'
+      }
+      value={formatValueForInput(value, column.type, timeZone)}
+      onChange={onChange}
+      placeholder={`Enter ${column.name}`}
+    />
+  )
+}

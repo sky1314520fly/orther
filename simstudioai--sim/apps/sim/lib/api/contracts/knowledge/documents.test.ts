@@ -1,0 +1,212 @@
+/**
+ * @vitest-environment node
+ */
+import { describe, expect, it } from 'vitest'
+import {
+  bulkCreateDocumentsBodySchema,
+  listKnowledgeDocumentsQuerySchema,
+  parseDocumentTagFiltersParam,
+  upsertDocumentBodySchema,
+} from '@/lib/api/contracts/knowledge/documents'
+
+describe('listKnowledgeDocumentsQuerySchema.tagFilters', () => {
+  it('keeps tagFilters a raw string (must NOT transform to an array)', () => {
+    // A transform-to-array here breaks requestJson outbound serialization
+    // (the array serializes as "[object Object]"). The wire type must stay a
+    // string; decoding happens server-side via parseDocumentTagFiltersParam.
+    const tagFilters = JSON.stringify([
+      { tagSlot: 'tag1', fieldType: 'text', operator: 'contains', value: 'x' },
+    ])
+    const parsed = listKnowledgeDocumentsQuerySchema.parse({ tagFilters })
+    expect(parsed.tagFilters).toBe(tagFilters)
+    expect(typeof parsed.tagFilters).toBe('string')
+  })
+})
+
+describe('parseDocumentTagFiltersParam', () => {
+  it('returns undefined for an absent param', () => {
+    expect(parseDocumentTagFiltersParam(undefined)).toBeUndefined()
+    expect(parseDocumentTagFiltersParam('')).toBeUndefined()
+  })
+
+  it('decodes a valid JSON array of filters', () => {
+    const filters = [
+      { tagSlot: 'tag1', fieldType: 'text', operator: 'contains', value: 'x' },
+      { tagSlot: 'date1', fieldType: 'date', operator: 'eq', value: '2026-04-21' },
+    ]
+    expect(parseDocumentTagFiltersParam(JSON.stringify(filters))).toEqual(filters)
+  })
+
+  it('throws on malformed JSON', () => {
+    expect(() => parseDocumentTagFiltersParam('[object Object]')).toThrow()
+    expect(() => parseDocumentTagFiltersParam('{not json')).toThrow()
+  })
+
+  it('throws when the shape is wrong', () => {
+    expect(() => parseDocumentTagFiltersParam(JSON.stringify([{ tagSlot: '' }]))).toThrow()
+  })
+
+  it('rejects an operator that is not valid for the field type', () => {
+    // unknown operator
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([{ tagSlot: 'tag1', fieldType: 'text', operator: 'bogus', value: 'x' }])
+      )
+    ).toThrow()
+    // valid operator name, wrong field type (contains is text-only)
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([
+          { tagSlot: 'number1', fieldType: 'number', operator: 'contains', value: '1' },
+        ])
+      )
+    ).toThrow()
+  })
+
+  it('rejects a fieldType that does not match the tag slot', () => {
+    // number1 is a numeric column; claiming it is text must fail
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([
+          { tagSlot: 'number1', fieldType: 'text', operator: 'contains', value: 'x' },
+        ])
+      )
+    ).toThrow()
+  })
+
+  it('rejects an unknown tag slot', () => {
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([{ tagSlot: 'tag99', fieldType: 'text', operator: 'eq', value: 'x' }])
+      )
+    ).toThrow()
+  })
+
+  it('rejects values that are unusable for the field type', () => {
+    // non-numeric value on a number field
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([{ tagSlot: 'number1', fieldType: 'number', operator: 'eq', value: 'abc' }])
+      )
+    ).toThrow()
+    // non-date value on a date field
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([{ tagSlot: 'date1', fieldType: 'date', operator: 'eq', value: 'nope' }])
+      )
+    ).toThrow()
+    // well-formed but impossible calendar dates (would 500 on ::date)
+    for (const value of ['2026-02-30', '2026-99-99', '2026-13-01', '2026-00-10']) {
+      expect(() =>
+        parseDocumentTagFiltersParam(
+          JSON.stringify([{ tagSlot: 'date1', fieldType: 'date', operator: 'eq', value }])
+        )
+      ).toThrow()
+    }
+    // non-boolean value on a boolean field
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([
+          { tagSlot: 'boolean1', fieldType: 'boolean', operator: 'eq', value: 'maybe' },
+        ])
+      )
+    ).toThrow()
+  })
+
+  it('rejects a between filter missing a usable upper bound', () => {
+    expect(() =>
+      parseDocumentTagFiltersParam(
+        JSON.stringify([
+          {
+            tagSlot: 'number1',
+            fieldType: 'number',
+            operator: 'between',
+            value: '1',
+            valueTo: 'x',
+          },
+        ])
+      )
+    ).toThrow()
+  })
+
+  it('accepts a valid number, date, boolean, and between filter', () => {
+    const filters = [
+      { tagSlot: 'number1', fieldType: 'number', operator: 'gte', value: '42' },
+      { tagSlot: 'date1', fieldType: 'date', operator: 'eq', value: '2026-04-21' },
+      { tagSlot: 'boolean1', fieldType: 'boolean', operator: 'eq', value: 'true' },
+      {
+        tagSlot: 'number2',
+        fieldType: 'number',
+        operator: 'between',
+        value: '1',
+        valueTo: '10',
+      },
+    ]
+    expect(parseDocumentTagFiltersParam(JSON.stringify(filters))).toEqual(filters)
+  })
+})
+
+/**
+ * `recipe` and `lang` reach analytics and nothing else, so an unrecognised value
+ * was accepted with a 200 and silently discarded. Both internal write bodies
+ * reuse the upload boundary's validated shape, which is what every first-party
+ * caller already sends.
+ */
+describe('internal document processingOptions', () => {
+  const DOCUMENT = {
+    filename: 'notes.txt',
+    fileUrl: 'https://example.com/notes.txt',
+    fileSize: 12,
+    mimeType: 'text/plain',
+  }
+
+  const boundaries = [
+    {
+      name: 'bulk create',
+      parse: (processingOptions: unknown) =>
+        bulkCreateDocumentsBodySchema.safeParse({
+          documents: [DOCUMENT],
+          bulk: true,
+          processingOptions,
+        }),
+    },
+    {
+      name: 'upsert',
+      parse: (processingOptions: unknown) =>
+        upsertDocumentBodySchema.safeParse({ ...DOCUMENT, processingOptions }),
+    },
+  ] as const
+
+  describe.each(boundaries)('$name', ({ parse }) => {
+    it('accepts what the shipped first-party callers send', () => {
+      expect(parse({ recipe: 'default', lang: 'en' }).success).toBe(true)
+    })
+
+    it('rejects an unrecognised recipe instead of discarding it', () => {
+      const result = parse({ recipe: 'super-chunker-9000', lang: 'en' })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.path).toEqual(['processingOptions', 'recipe'])
+    })
+
+    it('rejects a lang outside the enforced subtag shape', () => {
+      const result = parse({ recipe: 'default', lang: 'en_US' })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.path).toEqual(['processingOptions', 'lang'])
+    })
+
+    /**
+     * The shape these reuse is strict, so an option neither boundary implements
+     * is now a 400 rather than a key stripped on the way through — the behaviour
+     * change that reusing the upload shape brought with it.
+     */
+    it('rejects an option key neither boundary implements rather than stripping it', () => {
+      const result = parse({ recipe: 'default', chunkSize: 512 })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]).toMatchObject({
+        code: 'unrecognized_keys',
+        path: ['processingOptions'],
+        keys: ['chunkSize'],
+      })
+    })
+  })
+})
